@@ -1,0 +1,208 @@
+use std::sync::Arc;
+//use std::process::{Command, Stdio};
+
+use async_std::task;
+use async_std::io::{stdin, stdout};
+use async_std::sync::Mutex;
+
+use futures::io::{AsyncRead, AsyncWrite, BufReader};
+
+use futures::future::join;
+use futures::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, StreamExt};
+use futures::executor::block_on;
+/*use futures::{
+    executor::block_on,
+    io::{AsyncBufReadExt, BufReader},
+    stream::TryStreamExt,
+};*/
+//use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};
+use interprocess::nonblocking::local_socket::*;
+
+use structopt::StructOpt;
+use Action::*;
+use Mode::*;
+
+#[derive(StructOpt, Debug)]
+struct Arguments {
+    /// Socket to use for IPC (either namespace that starts with "@" or a file)
+    #[structopt(short = "s", long = "socket", default_value = "@ipc")]
+    socket: String,
+
+    #[structopt(subcommand)]
+    action: Action
+}
+
+#[derive(StructOpt, Debug)]
+enum Action {
+    /// Forward data from stdin to socket or from socket to stdout.
+    Forward {
+        /// Whether to pass stdin to stdout or not, regardless of forwarding mode.
+        #[structopt(short = "p", long = "passthrough")]
+        passthrough: bool,
+
+        #[structopt(subcommand)]
+        mode: Mode,
+    },
+
+    /// Schedule a command to be run periodically or when a message is received on the given socket.
+    Schedule {
+        /// Regular interval to run command (in seconds). If not supplied, the command will only be run once at the start and then when a message appears on the socket.
+        #[structopt(short = "i", long = "interval")]
+        interval: Option<f64>,
+
+        /// Command to run (encapsulate this as a string).
+        command: String
+    }
+}
+
+#[derive(StructOpt, Debug)]
+enum Mode {
+    /// Run in server mode (establishes the socket)
+    Server,
+
+    /// Run in client mode (connects to existing socket).
+    Client
+}
+
+/*fn notify(args: &Arguments) {
+    let mut conn = LocalSocketStream::connect(args.socket.clone())
+            .expect("Unable to open socket");
+
+    for line in stdin().lock().lines() {
+        let mut line = line.expect("Unable to read from stdin");
+        line.push('\n');
+        
+        conn.write_all(line.as_bytes()).expect("Unable to write to socket");
+    }
+}
+
+fn schedule(args: &Arguments) {
+    let listener = block_on(LocalSocketListener::bind(args.socket.clone()))
+            .expect("Unable to open socket for listening");
+    
+    let server = listener.incoming().try_for_each(|conn| async move {
+        use futures::stream::StreamExt;
+
+        let mut cmd = match &args.action {
+            Notify => panic!("This shouldn't happen"),
+            Schedule { interval: _, command } => Command::new("/bin/bash")
+                .arg("-c")
+                .arg(command)
+                .stdin(Stdio::piped())
+                .spawn()
+                .expect("Unable to run command")
+        };
+
+        let mut outstdin = cmd.stdin.take().expect("Unable to open stdin for command");
+
+        let mut lines = BufReader::new(conn).lines();
+        while let Some(line) = lines.next().await {
+            let mut line = line.expect("Unable to read from socket connection");
+            line.push('\n');
+
+            // Only write if command is still running
+            if let Ok(None) = cmd.try_wait() {
+                outstdin.write_all(line.as_bytes()).expect("Unable to write to stdin for command");
+            }
+        }
+
+        Ok(())
+    });
+
+    block_on(server).expect("Unable to start server listener loop");
+}*/
+
+type StreamVec = Vec<Box<dyn AsyncWrite + Unpin + Send>>;
+
+async fn forward<I: AsyncRead + Unpin>(input: I, output: Arc<Mutex<StreamVec>>) {
+    let mut lines = BufReader::new(input).lines();
+    while let Some(line) = lines.next().await {
+        let mut line = line.expect("Unable to read from socket");
+        line.push('\n');
+
+        let mut output = output.lock().await;
+
+        let mut i = 0;
+        while i < output.len() {
+            println!("{}", i);
+            match output[i].write_all(line.as_bytes()).await {
+                Ok(_) => i += 1,
+                _ => { output.remove(i); }
+            }
+        }
+    }
+}
+
+async fn listen(socket: String, output: Arc<Mutex<StreamVec>>) {
+    let listener = LocalSocketListener::bind(socket).await.expect("Unable to create socket");
+
+    let mut iter = listener.incoming();
+    while let Some(conn) = iter.next().await {
+        let conn = conn.expect("Unable to acquire incoming client connection");
+
+        let (mut conn_in, conn_out) = conn.split();
+        
+        {
+            let mut output = output.lock().await;
+            output.push(Box::new(conn_out));
+        }
+
+        task::spawn(async move {
+            /*println!("asd");
+            let mut lines = BufReader::new(conn_in).lines();
+            while let Some(line) = lines.next().await {
+                let mut line = line.expect("Unable to read from socket connection");
+                line.push('\n');
+
+                stdout().write_all(line.as_bytes()).await.expect("Unable to write to stdout");
+            }*/
+            async_std::io::copy(&mut conn_in, &mut stdout()).await.expect("Nahhhh");
+        });
+    }
+}
+
+fn server(socket: String, passthrough: bool) {
+    let mut output: StreamVec = Vec::new();
+    if passthrough {
+        output.push(Box::new(stdout()));
+    }
+
+    let output = Arc::new(Mutex::new(output));
+
+    let forwarder = forward(stdin(), output.clone());
+    let listener = listen(socket, output);
+    
+    block_on(join(forwarder, listener));
+}
+
+fn client(socket: String) {
+    use std::io::stdout;
+    use std::io::Write;
+    use std::io::BufRead;
+    use std::io::BufReader;
+    use interprocess::local_socket::LocalSocketStream;
+
+    let conn = LocalSocketStream::connect(socket)
+        .expect("Unable to open socket");
+
+    for line in BufReader::new(conn).lines() {
+        let mut line = line.expect("Unable to read from socket");
+        line.push('\n');
+        
+        stdout().lock().write_all(line.as_bytes()).expect("Unable to write to stdout");
+    }
+}
+
+fn main() {
+    let args = Arguments::from_args();
+
+    match &args.action {
+        Forward { passthrough, mode } => {
+            match mode {
+                Server => server(args.socket, *passthrough),
+                Client => client(args.socket)
+            }
+        },
+        Schedule { interval, command } => todo!()
+    }
+}

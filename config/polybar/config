@@ -1,0 +1,133 @@
+### MAIN BAR ###
+
+[bar/main]
+width = 100%
+height = 30
+
+bottom = false
+
+background = #00000000
+foreground = #ccffffff
+
+line-color = #ffcccccc
+line-size = 1
+
+padding = 3
+module-margin = 1
+
+#separator = %{T2}|%{T-}
+
+font-0 = FiraCodeNerdFont:style=Regular:size=10;2
+font-1 = FiraCodeNerdFont:weight=bold:size=10;2
+font-2 = MaterialDesignIcons-Regular:size=14;4
+font-3 = MaterialDesignIcons-Regular:size=14;3
+font-4 = MaterialDesignIcons-Regular:size=18;5
+font-5 = MaterialDesignIcons-Regular:size=17;4
+
+#tray-position = center
+
+### GLOBAL MODULES ###
+
+[module/styling]
+format-underline = #cccccccc
+
+[module/power]
+inherit = module/styling
+type = custom/script
+tail = true
+exec = ${root.power-command}
+
+[module/volume]
+inherit = module/styling
+type = custom/script
+tail = true
+exec = ${root.volume-command}
+click-left = echo "pavucontrol" | ipc -s=/tmp/volume-in client -q
+scroll-up = echo "up" | ipc -s=/tmp/volume-in client -q
+scroll-down = echo "down" | ipc -s=/tmp/volume-in client -q
+click-middle = echo "toggle" | ipc -s=/tmp/volume-in client -q
+
+[module/media]
+inherit = module/styling
+type = custom/script
+tail = true
+exec = ${root.media-command}
+
+[module/updates]
+inherit = module/styling
+type = custom/script
+tail = true
+exec = ${root.updates-command}
+click-left = echo "" | ipc -s=/tmp/updates-in client -q
+
+[module/bandwidth]
+inherit = module/styling
+type = custom/script
+tail = true
+exec = ${root.bandwidth-command}
+click-left = echo "" | ipc -s=/tmp/bandwidth-in client -q
+
+[module/cpu-usage]
+inherit = module/styling
+type = custom/script
+tail = true
+exec = ${root.cpu-usage-command}
+click-left = echo "" | ipc -s=/tmp/cpu-usage-in client -q
+
+[module/cpu-temp]
+inherit = module/styling
+type = custom/script
+tail = true
+exec = ${root.cpu-temp-command}
+click-left = echo "" | ipc -s=/tmp/cpu-temp-in client -q
+
+[module/date]
+inherit = module/styling
+type = custom/script
+tail = true
+exec = ${root.date-command}
+click-left = echo "calendar" | ipc -s=/tmp/date-in client -q
+
+[module/time]
+inherit = module/styling
+type = custom/script
+tail = true
+exec = ${root.time-command}
+
+### LEFT BAR ###
+
+[bar/left]
+inherit = bar/main
+monitor = DP-0
+
+modules-left = power volume media 
+modules-right = updates bandwidth cpu-usage cpu-temp date time
+
+power-command = ipc -s=/tmp/power-in server -d | schedule $HOME/.config/polybar/scripts/power.sh | ipc -p -s=/tmp/power server -d -m=1
+volume-command = ipc -s=/tmp/volume-in server -d 2>/dev/null | schedule -i=2 $HOME/.config/polybar/scripts/volume.sh | ipc -p -s=/tmp/volume server -d -m=1
+media-command = $HOME/.config/polybar/scripts/media.sh | ipc -p -s=/tmp/media server -d -m=1
+updates-command = ipc -s=/tmp/updates-in server -d | schedule -i=60 $HOME/.config/polybar/scripts/updates.sh | ipc -p -s=/tmp/updates server -d -m=1
+bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh enp4s0 | ipc -p -s=/tmp/bandwidth server -d -m=1
+cpu-usage-command = ipc -s=/tmp/cpu-usage-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-usage.sh | ipc -p -s=/tmp/cpu-usage server -d -m=1
+cpu-temp-command = ipc -s=/tmp/cpu-temp-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-temp.sh Package | ipc -p -s=/tmp/cpu-temp server -d -m=1
+date-command = ipc -s=/tmp/date-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/date.sh | ipc -p -s=/tmp/date server -d -m=1
+time-command = ipc -s=/tmp/time-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/time.sh | ipc -p -s=/tmp/time server -d -m=1
+
+### RIGHT BAR ###
+
+[bar/right]
+inherit = bar/main
+monitor = HDMI-0
+
+modules-left = power volume media
+modules-right = updates bandwidth cpu-usage cpu-temp date time
+
+power-command = ipc -s=/tmp/power client -r=0.1
+volume-command = ipc -s=/tmp/volume client -r=0.1
+media-command = ipc -s=/tmp/media client -r=0.1
+updates-command = ipc -s=/tmp/updates client -r=0.1
+bandwidth-command = ipc -s=/tmp/bandwidth client -r=0.1
+cpu-usage-command = ipc -s=/tmp/cpu-usage client -r=0.1
+cpu-temp-command = ipc -s=/tmp/cpu-temp client -r=0.1
+date-command = ipc -s=/tmp/date client -r=0.1
+time-command = ipc -s=/tmp/time client -r=0.1
