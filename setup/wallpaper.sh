@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting wallpaper setup..."
 
 echo "Installing feh..."

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting polybar setup..."
 
 echo "Installing polybar..."

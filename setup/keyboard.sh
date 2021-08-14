@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting keyboard setup..."
 
 echo "Installing keyboard config..."

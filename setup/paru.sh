@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting paru setup..."
 
 echo "Installing paru..."

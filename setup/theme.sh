@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting theme setup..."
 
 echo "Installing GTK 3..."

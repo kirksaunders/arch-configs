@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting monitor setup..."
 
 echo "Installing monitor config..."

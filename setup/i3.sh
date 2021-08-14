@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting i3 setup..."
 
 echo "Installing i3.."

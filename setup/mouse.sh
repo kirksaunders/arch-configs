@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting mouse setup..."
 
 echo "Installing mouse sens script..."

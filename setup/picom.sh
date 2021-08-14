@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting picom setup..."
 
 echo "Installing picom..."

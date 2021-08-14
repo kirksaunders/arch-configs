@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Beginning installation and setup..."
 mkdir -f ~/.config
 mkdir -f ~/bin

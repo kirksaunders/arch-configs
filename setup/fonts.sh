@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo "Starting font setup..."
 
 echo "Installing Fira Code..."
