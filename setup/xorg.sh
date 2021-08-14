@@ -11,9 +11,7 @@ echo "Installing default xinitrc..."
 cp config/.xinitrc ~/
 
 echo "Installing default xprofile..."
-echo -e '#!/bin/bash
-
-set -e\n' > ~/.xprofile
+echo -e '#!/bin/bash\n' > ~/.xprofile
 
 echo "Adding bin to path..."
 echo 'export PATH=$PATH:~/bin/;' >> ~/.xprofile
