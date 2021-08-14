@@ -3,7 +3,7 @@
 echo "Starting Spotify setup..."
 
 echo "Installing Spotify..."
-yay -S spotify
+paru -S spotify
 
 echo "Installing dependencies for Spotify launcher wrapper..."
 sudo pacman -S xorg-xwininfo

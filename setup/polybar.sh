@@ -3,7 +3,7 @@
 echo "Starting polybar setup..."
 
 echo "Installing polybar..."
-yay -S polybar
+paru -S polybar
 
 echo "Installing tools used by polybar..."
 sudo pacman -S gsimplecal pamixer lm_sensors bc playerctl pacman-contrib

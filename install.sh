@@ -5,6 +5,7 @@ mkdir -f ~/.config
 mkdir -f ~/bin
 
 # Install the various components
+./setup/paru.sh
 ./setup/audio.sh
 ./setup/xorg.sh
 ./setup/monitors.sh
