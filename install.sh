@@ -3,10 +3,13 @@
 set -e
 
 echo "Beginning installation and setup..."
+
+echo "Creating required user directories..."
 mkdir -f ~/.config
 mkdir -f ~/bin
 
 # Install the various components
+./setup/nano.sh
 ./setup/paru.sh
 ./setup/audio.sh
 ./setup/xorg.sh
