@@ -34,7 +34,7 @@ exec --no-startup-id picom
 exec --no-startup-id /usr/lib/mate-polkit/polkit-mate-authentication-agent-1
 
 # Set mouse sensitivity
-exec --no-startup-id /opt/mousesens.sh
+exec --no-startup-id /usr/local/bin/mousesens.sh
 
 # Launch terminal with screenfetch
 exec --no-startup-id alacritty -e bash -c 'screenfetch && bash'

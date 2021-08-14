@@ -6,7 +6,7 @@ echo "Installing i3.."
 sudo pacman -S i3-gaps
 
 echo "Installing tools used by i3..."
-sudo pacman -S alacritty
+sudo pacman -S alacritty screenfetch
 yay -S sway-launcher-desktop
 
 echo "Installing i3 config..."
