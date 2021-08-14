@@ -1,0 +1,1 @@
+ATTRS{idVendor}=="2972", ATTRS{idProduct}=="0047", TEST=="power/autosuspend", ATTR{power/autosuspend}:="0"
