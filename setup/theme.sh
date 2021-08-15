@@ -12,6 +12,6 @@ mkdir -p ~/.themes
 git clone https://github.com/EliverLara/Juno.git ~/.themes/
 
 echo "Installing GTK config..."
-cp -r config/gtk-3 ~/.config/
+cp -r config/gtk-3.0 ~/.config/
 
 echo "Done with theme setup!"
