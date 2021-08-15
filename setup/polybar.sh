@@ -4,7 +4,7 @@ set -e
 
 echo "Starting polybar setup..."
 
-if [ $1 != "update" ]
+if [ "$1" != "update" ]
 then
     echo "Installing polybar..."
     paru --skipreview --removemake --cleanafter -S polybar
@@ -16,11 +16,12 @@ fi
 echo "Installing polybar config..."
 cp -r config/polybar ~/.config/
 
-if [ $1 == "update" ]
+if [ "$1" == "update" ]
 then
     echo "Restarting polybar..."
     killall polybar || true
-    i3msg exec --no-startup-id ~/.config/polybar/scripts/launch.sh || true
+    sleep .1
+    i3-msg 'exec --no-startup-id ~/.config/polybar/scripts/launch.sh' || true
 fi
 
 echo "Done with polybar setup!"

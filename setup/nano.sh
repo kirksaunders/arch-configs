@@ -4,7 +4,7 @@ set -e
 
 echo "Starting nano setup..."
 
-if [ $1 != "update" ]
+if [ "$1" != "update" ]
 then
     echo "Installing nano..."
     sudo pacman -S nano

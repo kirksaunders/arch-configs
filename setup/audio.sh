@@ -4,7 +4,7 @@ set -e
 
 echo "Starting audio setup..."
 
-if [ $1 != "update" ]
+if [ "$1" != "update" ]
 then
     echo "Installing pulseaudio..."
     sudo pacman -S pulseaudio pavucontrol

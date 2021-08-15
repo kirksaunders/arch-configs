@@ -4,7 +4,7 @@ set -e
 
 echo "Starting font setup..."
 
-if [ $1 != "update" ]
+if [ "$1" != "update" ]
 then
     echo "Installing Fira Code and Nerd Fonts Complete..."
     sudo pacman -S ttf-fira-code ttf-nerd-fonts-symbols

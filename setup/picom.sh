@@ -4,7 +4,7 @@ set -e
 
 echo "Starting picom setup..."
 
-if [ $1 != "update" ]
+if [ "$1" != "update" ]
 then
     echo "Installing picom..."
     sudo pacman -S picom

@@ -4,7 +4,7 @@ set -e
 
 echo "Starting Spotify setup..."
 
-if [ $1 != "update" ]
+if [ "$1" != "update" ]
 then
     echo "Installing Spotify..."
     paru --skipreview --removemake --cleanafter -S spotify

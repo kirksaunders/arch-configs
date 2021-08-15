@@ -2,7 +2,7 @@
 
 set -e
 
-if [ $1 == "update" ]
+if [ "$1" == "update" ]
 then
     echo "Beginning update..."
 
@@ -43,7 +43,7 @@ source ~/.cargo/env
 ./setup/spotify.sh $@
 ./setup/polkit.sh $@
 
-if [ $1 == "update" ]
+if [ "$1" == "update" ]
 then
     echo "Update complete!"
 else

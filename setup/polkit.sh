@@ -4,7 +4,7 @@ set -e
 
 echo "Starting polkit setup..."
 
-if [ $1 == "update" ]
+if [ "$1" == "update" ]
 then
     echo "Nothing to do"
     exit 0

@@ -4,7 +4,7 @@ set -e
 
 echo "Starting theme setup..."
 
-if [ $1 != "update" ]
+if [ "$1" != "update" ]
 then
     echo "Installing GTK 3..."
     sudo pacman -S gtk3
