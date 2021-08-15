@@ -7,10 +7,10 @@ This section contains steps to install Arch in general (prior to running these i
 - Enable system clock synchronization with `timedatectl set-ntp true`.
 - Run `lsblk` or `fdisk -l` to see available disks, then run `parted` to start partitioning. You can use the `select` parted command to select a disk.
     - Create a partition table with `mklabel gpt`.
-    - If using legacy BIOS, create a BIOS partition like so: `mkpart bios 0% 4MB` and `set 1 bios_grub on`
-    - If using UEFI, create a EFI partition like so: `mkpart efi 0% 512MB` (you can go smaller if needed) and `set 1 boot on` and `set 1 esp on`.
-    - Create swap partition (optional but recommended) with `mkpart swap 4MB 4MB+SIZE` on BIOS and `mkpart swap 512MB 512MB+SIZE` on UEFI. Mark as swap: `set 2 swap on`. Replace size with the desired size of the swap partition (see: https://itsfoss.com/swap-size/) and do the actual addition calculation by hand (don't actually type `+`).
-    - Create the main partition with `mkpart primary 4MB+SIZE 100%` or `mkpart primary 512MB+SIZE 100%`.
+    - If using legacy BIOS, create a BIOS partition like so: `mkpart bios 0% 4MiB` and `set 1 bios_grub on`
+    - If using UEFI, create a EFI partition like so: `mkpart efi 0% 512MiB` (you can go smaller if needed) and `set 1 boot on` and `set 1 esp on`.
+    - Create swap partition (optional but recommended) with `mkpart swap 4MiB 4MiB+SIZE` on BIOS and `mkpart swap 512MiB 512MiB+SIZE` on UEFI. Mark as swap: `set 2 swap on`. Replace size with the desired size of the swap partition (see: https://itsfoss.com/swap-size/) and do the actual addition calculation by hand (don't actually type `+`).
+    - Create the main partition with `mkpart primary 4MiB+SIZE 100%` or `mkpart primary 512MiB+SIZE 100%`.
     - You're done with parted, go ahead and `quit`.
     - Go ahead and run `lsblk` to see partitions again for the next steps.
     - Format the EFI parition with `mkfs.fat -F 32 /dev/partition` (no need to format the BIOS partition).
