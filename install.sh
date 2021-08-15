@@ -5,8 +5,8 @@ set -e
 echo "Beginning installation and setup..."
 
 echo "Creating required user directories..."
-mkdir -f ~/.config
-mkdir -f ~/bin
+mkdir -p ~/.config
+mkdir -p ~/bin
 
 # Install the various components
 ./setup/nano.sh
