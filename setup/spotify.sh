@@ -8,7 +8,7 @@ echo "Installing Spotify..."
 paru --skipreview --removemake --cleanafter -S spotify
 
 echo "Installing dependencies for Spotify launcher wrapper..."
-sudo pacman -S xorg-xwininfo
+sudo pacman -S xorg-xwininfo jq
 
 echo "Installing Spotify launcher wrapper..."
 sudo cp extra/spotify.sh /usr/local/bin/
