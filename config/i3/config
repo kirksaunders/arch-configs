@@ -18,6 +18,11 @@ for_window [instance="launcher"] floating enable
 for_window [instance="launcher"] resize set width 500 px
 for_window [instance="launcher"] move position center
 
+# Configure updater
+for_window [instance="updater"] floating enable
+for_window [instance="updater"] resize set width 800 px
+for_window [instance="updater"] move position center
+
 # Configure pavucontrol
 for_window [class="Pavucontrol"] floating enable
 for_window [class="Pavucontrol"] resize set height 700 px
