@@ -9,7 +9,7 @@ sudo pacman -S gtk3
 
 echo "Downloading Juno GTK theme..."
 mkdir -p ~/.themes
-git clone git@github.com:EliverLara/Juno.git ~/.themes/
+git clone https://github.com/EliverLara/Juno.git ~/.themes/
 
 echo "Installing GTK config..."
 cp -r config/gtk-3 ~/.config/
