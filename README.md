@@ -9,7 +9,7 @@ This section contains steps to install Arch in general (prior to running these i
     - Create a partition table with `mklabel gpt`.
     - If using legacy BIOS, create a BIOS partition like so: `mkpart bios 0% 4MB` and `set 1 bios_grub on`
     - If using UEFI, create a EFI partition like so: `mkpart efi 0% 512MB` (you can go smaller if needed) and `set 1 boot on` and `set 1 esp on`.
-    - Create swap partition (optional but recommended) with `mkpart swap 4MB SIZE` on BIOS and `mkpart swap 512MB SIZE` on UEFI. Replace size with the desired size of the swap partition (see: https://itsfoss.com/swap-size/).
+    - Create swap partition (optional but recommended) with `mkpart swap 4MB SIZE` on BIOS and `mkpart swap 512MB SIZE` on UEFI. Mark as swap: `set 2 swap on`. Replace size with the desired size of the swap partition (see: https://itsfoss.com/swap-size/).
     - Create the main partition with `mkpart primary 4MB+SIZE 100%` or `mkpart primary 512MB+SIZE 100%` replacing SIZE with the swap size and doing the actual addition calculation by hand (don't actually type `+`).
     - You're done with parted, go ahead and `quit`.
     - Go ahead and run `lsblk` to see partitions again for the next steps.
