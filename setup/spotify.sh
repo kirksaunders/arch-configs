@@ -15,7 +15,7 @@ fi
 
 echo "Installing Spotify launcher wrapper..."
 sudo cp extra/spotify.sh /usr/local/bin/
-if [ $1 ~= "update" ]
+if [ "$1" != "update" ]
 then
     sudo cp /usr/share/applications/spotify.desktop /usr/share/applications/spotify.desktop.backup
     sudo sed -i 's/TryExec=spotify/TryExec=\/usr\/local\/bin\/spotify.sh/' /usr/share/applications/spotify.desktop
