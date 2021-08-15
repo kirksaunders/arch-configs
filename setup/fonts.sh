@@ -4,8 +4,8 @@ set -e
 
 echo "Starting font setup..."
 
-echo "Installing Fira Code..."
-sudo pacman -S ttf-fira-code
+echo "Installing Fira Code and Nerd Fonts Complete..."
+sudo pacman -S ttf-fira-code ttf-nerd-fonts-symbols
 
 echo "Installing Material Design Icons..."
 mkdir -p ~/.local/share/fonts
