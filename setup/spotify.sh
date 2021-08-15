@@ -5,7 +5,7 @@ set -e
 echo "Starting Spotify setup..."
 
 echo "Installing Spotify..."
-paru -S spotify
+paru --skipreview --removemake --cleanafter -S spotify
 
 echo "Installing dependencies for Spotify launcher wrapper..."
 sudo pacman -S xorg-xwininfo

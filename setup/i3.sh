@@ -9,7 +9,7 @@ sudo pacman -S i3-gaps
 
 echo "Installing tools used by i3..."
 sudo pacman -S alacritty screenfetch
-paru -S sway-launcher-desktop
+paru --skipreview --removemake --cleanafter -S sway-launcher-desktop
 
 echo "Installing i3 config..."
 cp -r config/i3 ~/.config/

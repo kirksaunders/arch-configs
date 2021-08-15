@@ -5,7 +5,7 @@ set -e
 echo "Starting polybar setup..."
 
 echo "Installing polybar..."
-paru -S polybar
+paru --skipreview --removemake --cleanafter -S polybar
 
 echo "Installing tools used by polybar..."
 sudo pacman -S gsimplecal pamixer lm_sensors bc playerctl pacman-contrib

@@ -14,6 +14,6 @@ cd ..
 rm -rf paru
 
 echo "Adding paru skipreview alias to bashrc..."
-echo 'alias paru="paru --skipreview"' >> ~/.bashrc
+echo 'alias paru='\''paru --skipreview --removemake --cleanafter'\' >> ~/.bashrc
 
 echo "Done with paru setup!"
