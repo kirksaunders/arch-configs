@@ -19,10 +19,10 @@ module-margin = 1
 
 font-0 = FiraCodeNerdFont:style=Regular:size=10;2
 font-1 = FiraCodeNerdFont:weight=bold:size=10;2
-font-2 = MaterialDesignIcons-Regular:size=14;4
-font-3 = MaterialDesignIcons-Regular:size=14;3
-font-4 = MaterialDesignIcons-Regular:size=18;5
-font-5 = MaterialDesignIcons-Regular:size=17;4
+font-2 = MaterialDesignIconsDesktop-Regular:size=14;4
+font-3 = MaterialDesignIconsDesktop-Regular:size=14;3
+font-4 = MaterialDesignIconsDesktop-Regular:size=18;5
+font-5 = MaterialDesignIconsDesktop-Regular:size=17;4
 
 #tray-position = center
 
