@@ -4,6 +4,12 @@ set -e
 
 echo "Starting xorg setup..."
 
+if [ $1 == "update" ]
+then
+    echo "Nothing to do"
+    exit 0
+fi
+
 echo "Installing xorg server..."
 sudo pacman -S xorg-server xorg-xinit xdotool
 

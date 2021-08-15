@@ -4,8 +4,11 @@ set -e
 
 echo "Starting picom setup..."
 
-echo "Installing picom..."
-sudo pacman -S picom
+if [ $1 != "update" ]
+then
+    echo "Installing picom..."
+    sudo pacman -S picom
+fi
 
 echo "Installing picom config..."
 cp -r config/picom ~/.config/

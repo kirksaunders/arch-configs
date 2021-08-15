@@ -4,8 +4,11 @@ set -e
 
 echo "Starting nano setup..."
 
-echo "Installing nano..."
-sudo pacman -S nano
+if [ $1 != "update" ]
+then
+    echo "Installing nano..."
+    sudo pacman -S nano
+fi
 
 echo "Installing nano config..."
 cp -r config/nano ~/.config/

@@ -1,5 +1,9 @@
 # Arch Linux Desktop Setup Scripts and Configs
 This repo contains all of my personal Arch Linux configs for i3, polybar, etc. Running the install script in the root of the repo should install all components (requires user input during installation of various components).
+## Install Script Usage
+Running the install script in the root of this repository will install all packages and configs. If those packages and configs are already installed, they will be reinstalled. If you want to just do an update, run `./install.sh update`.
+
+By default, the custom rust programs will keep their build files after installation so that updates don't require a complete rebuild. You can disable this by running `./install.sh clean-tools` or `./install.sh update clean-tools`.
 ## General Arch Installation Guide
 This section contains steps to install Arch in general (prior to running these install scripts). These steps were generally created from https://wiki.archlinux.org/title/installation_guide with some changes based on personal experience.
 

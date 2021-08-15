@@ -4,17 +4,26 @@ set -e
 
 echo "Starting i3 setup..."
 
-echo "Installing i3.."
-sudo pacman -S i3-gaps
+if [ $1 != "update" ]
+then
+    echo "Installing i3.."
+    sudo pacman -S i3-gaps
+fi
 
-echo "Installing tools used by i3..."
-sudo pacman -S alacritty screenfetch
-paru --skipreview --removemake --cleanafter -S sway-launcher-desktop
+if [ $1 != "update" ]
+then
+    echo "Installing tools used by i3..."
+    sudo pacman -S alacritty screenfetch
+    paru --skipreview --removemake --cleanafter -S sway-launcher-desktop
+fi
 
 echo "Installing i3 config..."
 cp -r config/i3 ~/.config/
 
-echo "Adding i3 to xinitrc..."
-echo "i3" >> ~/.xinitrc
+if [ $1 != "update" ]
+then
+    echo "Adding i3 to xinitrc..."
+    echo "i3" >> ~/.xinitrc
+fi
 
 echo "Done with i3 setup!"

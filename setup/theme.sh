@@ -4,11 +4,15 @@ set -e
 
 echo "Starting theme setup..."
 
-echo "Installing GTK 3..."
-sudo pacman -S gtk3
+if [ $1 != "update" ]
+then
+    echo "Installing GTK 3..."
+    sudo pacman -S gtk3
+fi
 
 echo "Downloading Juno GTK theme..."
 mkdir -p ~/.themes
+rm -rf ~/.themes/Juno
 git clone https://github.com/EliverLara/Juno.git ~/.themes/Juno
 rm -rf ~/.themes/Juno/.git
 
