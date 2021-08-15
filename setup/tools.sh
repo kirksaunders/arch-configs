@@ -31,6 +31,8 @@ then
     cargo clean --manifest-path=rust/ipc/Cargo.toml
 fi
 
+sleep .25
+
 echo "Building schedule..."
 cargo build --release --manifest-path=rust/schedule/Cargo.toml
 
@@ -57,6 +59,8 @@ then
     echo "Cleaning up schedule..."
     cargo clean --manifest-path=rust/schedule/Cargo.toml
 fi
+
+sleep .25
 
 echo "Building text-animator..."
 cargo build --release --manifest-path=rust/text-animator/Cargo.toml
