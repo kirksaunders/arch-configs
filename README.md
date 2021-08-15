@@ -36,7 +36,7 @@ This section contains steps to install Arch in general (prior to running these i
     - Install and enable dhcpcd so that wired network connections work (more may be needed for wifi, so just used wired for first install): `pacman -S dhcpcd` and `systemctl enable dhcpcd`.
     - Enable sudo user group: `EDITOR=nano visudo` and uncomment the line enabling `wheel` as a user group for sudo.
     - Create your user: `useradd -m user` and set its password: `passwd user`. Add it to the sudo group: `gpasswd -a user wheel`.
-    - Install grub: `pacman -S grub`.
+    - Install grub: `pacman -S grub`. Also install `efibootmgr` if using UEFI.
         - For BIOS: `grub-install --target=i386-pc /dev/drive` (the *drive*, not the *partition*)
         - For UEFI: First mount the EFI partition to `/efi`: `mkdir /efi` and `mount /dev/partition /efi`, then `grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=GRUB`.
         - Generate grub config: `grub-mkconfig -o /boot/grub/grub.cfg`.
