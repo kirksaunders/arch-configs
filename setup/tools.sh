@@ -7,8 +7,20 @@ echo "Starting tool setup..."
 echo "Building ipc..."
 cargo build --release --manifest-path=rust/ipc/Cargo.toml
 
+if [ $1 == "update" ]
+then
+    echo "Killing polybar..."
+    killall polybar || true
+fi
+
 echo "Installing ipc..."
 cp rust/ipc/target/release/ipc ~/bin/
+
+if [ $1 == "update" ]
+then
+    echo "Starting polybar..."
+    i3msg exec --no-startup-id ~/.config/polybar/scripts/launch.sh || true
+fi
 
 if [ $1 == "clean-tools" ] || [ $2 == "clean-tools" ]
 then
@@ -19,8 +31,20 @@ fi
 echo "Building schedule..."
 cargo build --release --manifest-path=rust/schedule/Cargo.toml
 
+if [ $1 == "update" ]
+then
+    echo "Killing polybar..."
+    killall polybar || true
+fi
+
 echo "Installing schedule..."
 cp rust/schedule/target/release/schedule ~/bin/
+
+if [ $1 == "update" ]
+then
+    echo "Starting polybar..."
+    i3msg exec --no-startup-id ~/.config/polybar/scripts/launch.sh || true
+fi
 
 if [ $1 == "clean-tools" ] || [ $2 == "clean-tools" ]
 then
@@ -31,8 +55,20 @@ fi
 echo "Building text-animator..."
 cargo build --release --manifest-path=rust/text-animator/Cargo.toml
 
+if [ $1 == "update" ]
+then
+    echo "Killing polybar..."
+    killall polybar || true
+fi
+
 echo "Installing text-animator..."
 cp rust/text-animator/target/release/text-animator ~/bin/
+
+if [ $1 == "update" ]
+then
+    echo "Starting polybar..."
+    i3msg exec --no-startup-id ~/.config/polybar/scripts/launch.sh || true
+fi
 
 if [ $1 == "clean-tools" ] || [ $2 == "clean-tools" ]
 then

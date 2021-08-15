@@ -16,4 +16,11 @@ fi
 echo "Installing polybar config..."
 cp -r config/polybar ~/.config/
 
+if [ $1 == "update" ]
+then
+    echo "Restarting polybar..."
+    killall polybar || true
+    i3msg exec --no-startup-id ~/.config/polybar/scripts/launch.sh || true
+fi
+
 echo "Done with polybar setup!"

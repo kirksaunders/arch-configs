@@ -12,6 +12,7 @@ fi
 
 echo "Installing Material Design Icons..."
 mkdir -p ~/.local/share/fonts
+rm -rf ~/.local/share/fonts/MaterialDesignIconsDesktop.ttf
 wget -O ~/.local/share/fonts/MaterialDesignIconsDesktop.ttf "https://github.com/Templarian/MaterialDesign-Font/blob/master/MaterialDesignIconsDesktop.ttf?raw=true"
 
 fc-cache
