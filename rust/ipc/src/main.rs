@@ -156,7 +156,7 @@ async fn listen(socket: impl AsRef<Path>, data: Arc<Mutex<StreamData>>) {
         match listener.accept().await {
             Ok((stream, _addr)) => {
                 let stream = stream.compat();
-                let (mut stream_in, mut stream_out) = stream.split();
+                let (stream_in, mut stream_out) = stream.split();
         
                 {
                     let mut data = data.lock().await;
@@ -173,7 +173,17 @@ async fn listen(socket: impl AsRef<Path>, data: Arc<Mutex<StreamData>>) {
 
                 let data2 = data.clone();
                 task::spawn(async move {
-                    async_std::io::copy(&mut stream_in, &mut stdout()).await.expect("Unable to copy from socket to stdout");
+                    // simply using copy doesn't ensure each line is flushed after writing
+                    //async_std::io::copy(&mut stream_in, &mut stdout()).await.expect("Unable to copy from socket to stdout");
+
+                    let mut lines = BufReader::new(stream_in).lines();
+                    let mut out = stdout();
+                    while let Some(line) = lines.next().await {
+                        let mut line = line.expect("Unable to read from socket");
+                        line.push('\n');
+                        out.write_all(line.as_bytes()).await.expect("Unable to write to stdout");
+                    }
+                    
 
                     // At this point the connection has closed, so we should remove it from the output vector.
                     // However, since we don't know which element in the vector refers to this connection, let's
@@ -253,7 +263,7 @@ async fn connect(socket: impl AsRef<Path>, output: StreamVec, retry: Option<f64>
         }
     };
 
-    let (mut stream_in, stream_out) = stream.split();
+    let (stream_in, stream_out) = stream.split();
 
     output.push(Box::new(stream_out));
 
@@ -263,7 +273,7 @@ async fn connect(socket: impl AsRef<Path>, output: StreamVec, retry: Option<f64>
     task::spawn(Abortable::new(async move {
         let mut lines = BufReader::new(stdin()).lines();
         while let Some(line) = lines.next().await {
-            let mut line = line.expect("Unable to read from socket");
+            let mut line = line.expect("Unable to read from stdin");
             line.push('\n');
     
             for out in output.iter_mut() {
@@ -278,7 +288,16 @@ async fn connect(socket: impl AsRef<Path>, output: StreamVec, retry: Option<f64>
     }, abort_registration1));
 
     let _ = Abortable::new(async move {
-        async_std::io::copy(&mut stream_in, &mut stdout()).await.expect("Unable to copy from socket to stdout");
+        // simply using copy doesn't ensure each line is flushed after writing
+        //async_std::io::copy(&mut stream_in, &mut stdout()).await.expect("Unable to copy from socket to stdout");
+
+        let mut lines = BufReader::new(stream_in).lines();
+        let mut out = stdout();
+        while let Some(line) = lines.next().await {
+            let mut line = line.expect("Unable to read from socket");
+            line.push('\n');
+            out.write_all(line.as_bytes()).await.expect("Unable to write to stdout");
+        }
 
         // We only reach this point if the above line finishes (meaning the connection has been broken)
         abort_handle1.abort();

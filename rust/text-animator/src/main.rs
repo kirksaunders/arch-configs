@@ -132,14 +132,12 @@ fn main() {
         Mode::FORWARD => {
             let mut last = 0;
             for i in (cut..=content.len()).step_by(step) {
-                let t = std::time::Instant::now();
                 last = i;
                 content.write(&mut stdout(), i).unwrap();
                 println!();
                 stdout().flush().unwrap();
 
                 sleep(Duration::from_secs_f64(delay));
-                println!("{:?}", t.elapsed());
             }
 
             if last != content.len() {

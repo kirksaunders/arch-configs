@@ -10,10 +10,8 @@ coproc fd { query_info; }
 
 while read -u "${fd[0]}" line
 do
-    if [ -z "$line" ]
+    if [[ -n "${line/[ ]*\n/}" ]]
     then
-        echo ""
-    else
         readarray -td "$sep" data <<<"$line"
         status=${data[0]}
         artist=${data[1]}
@@ -34,5 +32,7 @@ do
         fi
 
         printf "%s\n" "$title"
+    else
+        echo ""
     fi
 done
