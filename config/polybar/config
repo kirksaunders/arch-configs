@@ -17,8 +17,8 @@ module-margin = 1
 
 #separator = %{T2}|%{T-}
 
-font-0 = FiraCodeNerdFont:style=Regular:size=10;2
-font-1 = FiraCodeNerdFont:weight=bold:size=10;2
+font-0 = FiraCode:style=Regular:size=10;2
+font-1 = FiraCode:weight=bold:size=10;2
 font-2 = MaterialDesignIconsDesktop-Regular:size=14;4
 font-3 = MaterialDesignIconsDesktop-Regular:size=14;3
 font-4 = MaterialDesignIconsDesktop-Regular:size=18;5
@@ -107,9 +107,9 @@ power-command = ipc -s=/tmp/power-in server -d | schedule $HOME/.config/polybar/
 volume-command = ipc -s=/tmp/volume-in server -d 2>/dev/null | schedule -i=2 $HOME/.config/polybar/scripts/volume.sh | ipc -p -s=/tmp/volume server -d -m=1
 media-command = $HOME/.config/polybar/scripts/media.sh | ipc -p -s=/tmp/media server -d -m=1
 updates-command = ipc -s=/tmp/updates-in server -d | schedule -i=60 $HOME/.config/polybar/scripts/updates.sh | ipc -p -s=/tmp/updates server -d -m=1
-bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh enp4s0 | ipc -p -s=/tmp/bandwidth server -d -m=1
+bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh enp6s0 | ipc -p -s=/tmp/bandwidth server -d -m=1
 cpu-usage-command = ipc -s=/tmp/cpu-usage-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-usage.sh | ipc -p -s=/tmp/cpu-usage server -d -m=1
-cpu-temp-command = ipc -s=/tmp/cpu-temp-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-temp.sh Package | ipc -p -s=/tmp/cpu-temp server -d -m=1
+cpu-temp-command = ipc -s=/tmp/cpu-temp-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-temp.sh Tdie | ipc -p -s=/tmp/cpu-temp server -d -m=1
 date-command = ipc -s=/tmp/date-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/date.sh | ipc -p -s=/tmp/date server -d -m=1
 time-command = ipc -s=/tmp/time-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/time.sh | ipc -p -s=/tmp/time server -d -m=1
 

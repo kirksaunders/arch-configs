@@ -1,1 +1,0 @@
-ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c090", ENV{DISPLAY}=":0.0", ENV{XAUTHORITY}="/home/user/.Xauthority", RUN+="/usr/local/bin/mousesens.sh"
