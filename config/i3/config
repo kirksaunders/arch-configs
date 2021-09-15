@@ -32,6 +32,9 @@ for_window [class="Pavucontrol"] move position center
 for_window [class="Gsimplecal"] floating enable
 for_window [class="Gsimplecal"] move down 35 px
 
+# Configure Plexamp
+for_window [class="Plexamp"] floating enable
+
 # Start picom
 exec --no-startup-id picom
 
