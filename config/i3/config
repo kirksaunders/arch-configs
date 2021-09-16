@@ -12,6 +12,7 @@
 set $mod Mod4
 set $term alacritty
 set $menu exec alacritty --class launcher --title Launcher -e sway-launcher-desktop
+set $plexamp /usr/local/bin/plexamp.sh toggle
 
 # Configure launcher
 for_window [instance="launcher"] floating enable
@@ -25,15 +26,20 @@ for_window [instance="updater"] move position center
 
 # Configure pavucontrol
 for_window [class="Pavucontrol"] floating enable
+for_window [class="Pavucontrol"] sticky enable
 for_window [class="Pavucontrol"] resize set height 700 px
 for_window [class="Pavucontrol"] move position center
 
 # Configure gsimplecal
 for_window [class="Gsimplecal"] floating enable
+for_window [class="Gsimplecal"] sticky enable
 for_window [class="Gsimplecal"] move down 35 px
 
 # Configure Plexamp
 for_window [class="Plexamp"] floating enable
+for_window [class="Plexamp"] sticky enable
+for_window [class="Plexamp"] move position mouse
+for_window [class="Plexamp"] resize set 250 px 475 px
 
 # Start picom
 exec --no-startup-id picom
@@ -91,6 +97,9 @@ bindsym $mod+d exec --no-startup-id $menu
 # There also is i3-dmenu-desktop which only displays applications shipping a
 # .desktop file. It is a wrapper around dmenu, so you need that installed.
 # bindcode $mod+40 exec --no-startup-id i3-dmenu-desktop
+
+# open plexamp
+bindsym $mod+m exec --no-startup-id $plexamp
 
 # change focus
 bindsym $mod+j focus left
