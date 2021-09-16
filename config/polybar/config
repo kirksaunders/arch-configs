@@ -58,7 +58,7 @@ inherit = module/styling
 type = custom/script
 tail = true
 exec = ${root.updates-command}
-click-left = alacritty --class updater --title Updater -e sudo pacman -Syu; echo "" | ipc -s=/tmp/updates-in client -q
+click-left = alacritty --class updater --title Updater -e paru -Syu; echo "" | ipc -s=/tmp/updates-in client -q
 
 [module/bandwidth]
 inherit = module/styling

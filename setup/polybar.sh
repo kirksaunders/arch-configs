@@ -11,6 +11,7 @@ then
 
     echo "Installing tools used by polybar..."
     sudo pacman -S gsimplecal pamixer lm_sensors bc playerctl pacman-contrib
+    paru --skipreview --removemake --cleanafter -S checkupdates-aur
 fi
 
 echo "Installing polybar config..."
