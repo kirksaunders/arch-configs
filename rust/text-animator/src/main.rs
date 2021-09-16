@@ -72,16 +72,14 @@ impl Content {
                     Ok(amnt)
                 },
                 Content::Concatenation(content) => {
-                    let mut limit = limit;
                     let mut amnt = 0;
                     for c in content {
-                        if limit == 0 {
+                        if limit-amnt == 0 {
                             break;
                         }
 
-                        let a = c.write(out, limit)?;
+                        let a = c.write(out, limit-amnt)?;
                         amnt += a;
-                        limit -= a;
                     }
                     Ok(amnt)
                 }
