@@ -84,10 +84,10 @@ then
     if [ $open = 1 ]
     then
         i3-msg mode "power" &>/dev/null
-        printf "%s\n" "$animation_json" | text-animator -c=1 -d=0.005 -s=2
+        printf "%s\n" "$animation_json" | text-animator -c=1 -d=0.005 -s=2 forward
     else
         i3-msg mode "default" &>/dev/null
-        printf "%s\n" "$animation_json" | text-animator -m=reverse -c=1 -d=0.005 -s=2
+        printf "%s\n" "$animation_json" | text-animator -c=1 -d=0.005 -s=2 reverse
     fi
 else
     if [ $open = 1 ]

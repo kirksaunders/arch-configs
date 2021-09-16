@@ -1,10 +1,39 @@
-use std::env;
 use std::io::Write;
 use std::io::{Read, stdin, stdout};
 use std::thread::sleep;
 use std::time::Duration;
 
 use serde::{Serialize, Deserialize};
+
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+struct Arguments {
+    /// Delay (in seconds) between each animation frame
+    #[structopt(short = "d", long = "delay", default_value = "0.01")]
+    delay: f64,
+
+    /// Step size (in characters) between each animation frame
+    #[structopt(short = "s", long = "step", default_value = "1")]
+    step: usize,
+
+    /// Where to cut string (amount of characters) to make static (animation will occur past these characters)
+    #[structopt(short = "c", long = "cut", default_value = "0")]
+    cut: usize,
+
+    /// Animation mode to run in
+    #[structopt(subcommand)]
+    mode: Mode
+}
+
+#[derive(StructOpt, Debug)]
+enum Mode {
+    /// Animate forwards (string starts empty and grows in size)
+    Forward,
+
+    /// Animate in reverse (string starts full and shrinks in size)
+    Reverse
+}
 
 #[derive(Serialize, Deserialize)]
 enum Content {
@@ -63,34 +92,8 @@ impl Content {
     }
 }
 
-enum Mode {
-    FORWARD,
-    REVERSE
-}
-
 fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    let mut delay = 0.01;
-    let mut step = 1;
-    let mut cut = 0;
-    let mut mode = Mode::FORWARD;
-
-    for arg in &args[1..] {
-        match &arg[..3] {
-            "-d=" => delay = arg[3..].parse::<f64>().expect("Invalid delay value"),
-            "-s=" => step = arg[3..].parse::<usize>().expect("Invalid step value"),
-            "-c=" => cut = arg[3..].parse::<usize>().expect("Invalid cut index value"),
-            "-m=" => {
-                match &arg[3..] {
-                    "forward" => mode = Mode::FORWARD,
-                    "reverse" => mode = Mode::REVERSE,
-                    _ => panic!("Invalid mode")
-                }
-            }
-            _ => panic!("Unknown argument: {}", arg)
-        }
-    }
+    let args = Arguments::from_args();
 
     /*let content = Content::Concatenation(vec![
         Content::Tag {
@@ -128,16 +131,16 @@ fn main() {
 
     let content: Content = serde_json::from_str(&input).expect("Unable to parse input as json");
 
-    match mode {
-        Mode::FORWARD => {
+    match args.mode {
+        Mode::Forward => {
             let mut last = 0;
-            for i in (cut..=content.len()).step_by(step) {
+            for i in (args.cut..=content.len()).step_by(args.step) {
                 last = i;
                 content.write(&mut stdout(), i).unwrap();
                 println!();
                 stdout().flush().unwrap();
 
-                sleep(Duration::from_secs_f64(delay));
+                sleep(Duration::from_secs_f64(args.delay));
             }
 
             if last != content.len() {
@@ -145,19 +148,19 @@ fn main() {
                 println!()
             }
         },
-        Mode::REVERSE => {
+        Mode::Reverse => {
             let mut last = 0;
-            for i in (cut..=content.len()).rev().step_by(step) {
+            for i in (args.cut..=content.len()).rev().step_by(args.step) {
                 last = i;
                 content.write(&mut stdout(), i).unwrap();
                 println!();
                 stdout().flush().unwrap();
 
-                sleep(Duration::from_secs_f64(delay));
+                sleep(Duration::from_secs_f64(args.delay));
             }
 
-            if last != cut {
-                content.write(&mut stdout(), cut).unwrap();
+            if last != args.cut {
+                content.write(&mut stdout(), args.cut).unwrap();
                 println!()
             }
         }
