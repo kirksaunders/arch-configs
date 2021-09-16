@@ -78,8 +78,7 @@ impl Content {
                             break;
                         }
 
-                        let a = c.write(out, limit-amnt)?;
-                        amnt += a;
+                        amnt += c.write(out, limit-amnt)?;
                     }
                     Ok(amnt)
                 }
