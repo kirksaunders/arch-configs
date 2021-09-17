@@ -13,8 +13,8 @@ fi
 if [ "$1" != "update" ]
 then
     echo "Installing tools used by i3..."
-    sudo pacman -S alacritty screenfetch
-    paru --skipreview --removemake --cleanafter -S sway-launcher-desktop
+    sudo pacman -S alacritty
+    paru --skipreview --removemake --cleanafter -S sway-launcher-desktop neofetch
 fi
 
 echo "Installing i3 config..."
