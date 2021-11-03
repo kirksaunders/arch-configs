@@ -43,6 +43,7 @@ source ~/.cargo/env
 ./setup/spotify.sh $@
 ./setup/polkit.sh $@
 ./setup/plexamp.sh $@
+./setup/xrdp.sh $@
 
 if [ "$1" == "update" ]
 then

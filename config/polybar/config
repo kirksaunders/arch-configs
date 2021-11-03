@@ -100,7 +100,7 @@ exec = ${root.time-command}
 inherit = bar/main
 monitor = DP-0
 
-modules-left = power volume media 
+modules-left = power volume media
 modules-right = updates bandwidth cpu-usage cpu-temp date time
 
 power-command = ipc -s=/tmp/power-in server -d | schedule $HOME/.config/polybar/scripts/power.sh | ipc -p -s=/tmp/power server -d -m=1
@@ -131,3 +131,22 @@ cpu-usage-command = ipc -s=/tmp/cpu-usage client -r=0.1
 cpu-temp-command = ipc -s=/tmp/cpu-temp client -r=0.1
 date-command = ipc -s=/tmp/date client -r=0.1
 time-command = ipc -s=/tmp/time client -r=0.1
+
+### XRDP BAR ###
+
+[bar/xrdp]
+inherit = bar/main
+monitor = rdp0
+
+modules-left = power volume media
+modules-right = updates bandwidth cpu-usage cpu-temp date time
+
+power-command = ipc -s=/tmp/power-in server -d | schedule $HOME/.config/polybar/scripts/power.sh
+volume-command = ipc -s=/tmp/volume-in server -d 2>/dev/null | schedule -i=2 $HOME/.config/polybar/scripts/volume.sh
+media-command = $HOME/.config/polybar/scripts/media.sh
+updates-command = ipc -s=/tmp/updates-in server -d | schedule -i=60 $HOME/.config/polybar/scripts/updates.sh
+bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh enp6s0
+cpu-usage-command = ipc -s=/tmp/cpu-usage-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-usage.sh
+cpu-temp-command = ipc -s=/tmp/cpu-temp-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-temp.sh Tdie
+date-command = ipc -s=/tmp/date-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/date.sh
+time-command = ipc -s=/tmp/time-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/time.sh
