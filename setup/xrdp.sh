@@ -11,7 +11,7 @@ then
 fi
 
 echo "Installing xrdp..."
-paru --skipreview --removemake --cleanafter -S xorgxrdp-nvidia pulseaudio-module-xrdp
+paru --skipreview --removemake --cleanafter -S xorgxrdp-nvidia
 
 echo "Enabling xrdp service..."
 sudo systemctl enable xrdp
