@@ -98,7 +98,7 @@ exec = ${root.time-command}
 
 [bar/left]
 inherit = bar/main
-monitor = DP-0
+monitor = DP-2
 
 modules-left = power volume media
 modules-right = updates bandwidth cpu-usage cpu-temp date time
