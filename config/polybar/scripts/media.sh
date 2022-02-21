@@ -3,14 +3,19 @@
 sep='`'
 
 query_info() {
-    exec 5>&1
     while [ 1 ];
     do
-        out=$(timeout 1 playerctl metadata --format "{{ uc(status) }}$sep{{ artist }}$sep{{ title }}$sep" --follow 2>/dev/null | tee >(cat - >&5))
+        timeout 1 playerctl metadata --format "{{ uc(status) }}$sep{{ artist }}$sep{{ title }}$sep" --follow 2>/dev/null | tee /tmp/media-tmp
+        out="$(< /tmp/media-tmp)"
 
         if [[ -z "$out" ]];
         then
-            echo ""
+            playerctl metadata --format "{{ uc(status) }}$sep{{ artist }}$sep{{ title }}$sep" 2>/tmp/media-tmp-error
+            err="$(< /tmp/media-tmp-error)"
+            if [[ "$err" == "No players found" ]];
+            then
+                echo ""
+            fi
         fi
     done
 }
