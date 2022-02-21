@@ -3,7 +3,16 @@
 sep='`'
 
 query_info() {
-    playerctl metadata --format "{{ uc(status) }}$sep{{ artist }}$sep{{ title }}$sep" --follow 2>/dev/null
+    exec 5>&1
+    while [ 1 ];
+    do
+        out=$(timeout 1 playerctl metadata --format "{{ uc(status) }}$sep{{ artist }}$sep{{ title }}$sep" --follow 2>/dev/null | tee >(cat - >&5))
+
+        if [[ -z "$out" ]];
+        then
+            echo ""
+        fi
+    done
 }
 
 coproc fd { query_info; }
