@@ -107,7 +107,7 @@ power-command = ipc -s=/tmp/power-in server -d | schedule $HOME/.config/polybar/
 volume-command = ipc -s=/tmp/volume-in server -d 2>/dev/null | schedule -i=2 $HOME/.config/polybar/scripts/volume.sh | ipc -p -s=/tmp/volume server -d -m=1
 media-command = $HOME/.config/polybar/scripts/media.sh | ipc -p -s=/tmp/media server -d -m=1
 updates-command = ipc -s=/tmp/updates-in server -d | schedule -i=60 $HOME/.config/polybar/scripts/updates.sh | ipc -p -s=/tmp/updates server -d -m=1
-bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh enp6s0 | ipc -p -s=/tmp/bandwidth server -d -m=1
+bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh bond0 | ipc -p -s=/tmp/bandwidth server -d -m=1
 cpu-usage-command = ipc -s=/tmp/cpu-usage-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-usage.sh | ipc -p -s=/tmp/cpu-usage server -d -m=1
 cpu-temp-command = ipc -s=/tmp/cpu-temp-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-temp.sh Tdie | ipc -p -s=/tmp/cpu-temp server -d -m=1
 date-command = ipc -s=/tmp/date-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/date.sh | ipc -p -s=/tmp/date server -d -m=1
@@ -143,7 +143,7 @@ modules-right = updates bandwidth cpu-usage cpu-temp date time
 
 power-command = ipc -s=/tmp/power-in server -d | schedule $HOME/.config/polybar/scripts/power.sh
 updates-command = ipc -s=/tmp/updates-in server -d | schedule -i=60 $HOME/.config/polybar/scripts/updates.sh
-bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh enp6s0
+bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh bond0
 cpu-usage-command = ipc -s=/tmp/cpu-usage-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-usage.sh
 cpu-temp-command = ipc -s=/tmp/cpu-temp-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-temp.sh Tdie
 date-command = ipc -s=/tmp/date-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/date.sh
@@ -162,7 +162,7 @@ power-command = ipc -s=/tmp/power-in server -d | schedule $HOME/.config/polybar/
 volume-command = ipc -s=/tmp/volume-in server -d 2>/dev/null | schedule -i=2 $HOME/.config/polybar/scripts/volume.sh
 media-command = $HOME/.config/polybar/scripts/media.sh
 updates-command = ipc -s=/tmp/updates-in server -d | schedule -i=60 $HOME/.config/polybar/scripts/updates.sh
-bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh enp6s0
+bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh bond0
 cpu-usage-command = ipc -s=/tmp/cpu-usage-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-usage.sh
 cpu-temp-command = ipc -s=/tmp/cpu-temp-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-temp.sh Tdie
 date-command = ipc -s=/tmp/date-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/date.sh

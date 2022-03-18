@@ -11,6 +11,7 @@ then
 fi
 
 echo "Installing rust..."
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+sudo pacman -S rustup
+rustup default stable
 
 echo "Done with rust setup!"

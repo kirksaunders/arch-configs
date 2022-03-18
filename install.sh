@@ -22,11 +22,7 @@ mkdir -p ~/bin
 # Install the various components
 ./setup/nano.sh $@
 ./setup/build.sh $@
-
 ./setup/rust.sh $@
-echo "Sourcing rust environment variables..."
-source ~/.cargo/env
-
 ./setup/paru.sh $@
 ./setup/audio.sh $@
 ./setup/xorg.sh $@

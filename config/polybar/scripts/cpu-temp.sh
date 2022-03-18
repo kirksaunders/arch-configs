@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CORE="${1}"
-OUTPUT=$(sensors -Au)
+OUTPUT=$(sensors -Au 2>/dev/null)
 
 IFS=$'\n'
 DATA=$(echo "${OUTPUT}" | egrep -A2 "${CORE}")
