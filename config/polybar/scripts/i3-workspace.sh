@@ -2,7 +2,7 @@
 
 workspaces=$(i3-msg -t get_workspaces)
 
-focused=$(printf "%s\n" "$workspaces" | jq -r '.[] | select(.focused==true).name')
+focused=$(printf "%s\n" "$workspaces" | jq -r '.[] | select(.visible==true).name')
 mapfile -t all_workspaces < <(printf "%s\n" "$workspaces" | jq -r '.[] | .name')
 
 first=1
