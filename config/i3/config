@@ -33,7 +33,7 @@ for_window [class="Pavucontrol"] move position center
 # Configure gsimplecal
 for_window [class="Gsimplecal"] floating enable
 for_window [class="Gsimplecal"] sticky enable
-for_window [class="Gsimplecal"] move down 35 px
+for_window [class="Gsimplecal"] move down 20 px
 
 # Configure Plexamp
 for_window [class="Plexamp"] floating enable
