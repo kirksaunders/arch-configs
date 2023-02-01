@@ -16,7 +16,7 @@ do
     if [ "$workspace" == "$focused" ]; then
         printf "%%{T9}$workspace%%{T-}"
     else
-        printf "%%{A1:i3-msg workspace number $workspace; echo 'update' | ipc -s=/tmp/i3-workspace-in client -q:}%%{T7}$workspace%%{T-}%%{A}"
+        printf "%%{A1:i3-msg workspace number $workspace:}%%{T7}$workspace%%{T-}%%{A}"
     fi
 done
 
