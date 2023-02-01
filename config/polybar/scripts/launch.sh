@@ -8,6 +8,7 @@ while pgrep -u $UID -x polybar >/dev/null; do sleep 0.1; done
 
 rdp=$(xrandr | grep rdp0)
 nomachine=$(xrandr | grep nxoutput0)
+vnc=$(xrandr | grep VNC-0)
 
 # Launch Polybar, using default config location ~/.config/polybar/config
 if [[ ! -z "$rdp" ]];
@@ -16,6 +17,9 @@ then
 elif [[ ! -z "$nomachine" ]];
 then
     polybar nomachine &
+elif [[ ! -z "$vnc" ]];
+then
+    polybar vnc &
 else
     polybar left &
     polybar right &
