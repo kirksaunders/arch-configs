@@ -1,9 +1,9 @@
 use std::io::Write;
-use std::io::{Read, stdin, stdout};
+use std::io::{stdin, stdout, Read};
 use std::thread::sleep;
 use std::time::Duration;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use structopt::StructOpt;
 
@@ -23,7 +23,7 @@ struct Arguments {
 
     /// Animation mode to run in
     #[structopt(subcommand)]
-    mode: Mode
+    mode: Mode,
 }
 
 #[derive(StructOpt, Debug)]
@@ -32,7 +32,7 @@ enum Mode {
     Forward,
 
     /// Animate in reverse (string starts full and shrinks in size)
-    Reverse
+    Reverse,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -41,18 +41,21 @@ enum Content {
     Tag {
         prefix: String,
         suffix: String,
-        content: Box<Content>
+        content: Box<Content>,
     },
-    Concatenation(Vec<Content>)
+    Concatenation(Vec<Content>),
 }
 
 impl Content {
     fn len(&self) -> usize {
         match self {
             Content::Raw(str) => str.chars().count(),
-            Content::Tag{prefix: _, suffix: _, content: con} => con.len(),
-            Content::Concatenation(content) => content.iter().
-                    fold(0, |acc, s| acc + s.len())
+            Content::Tag {
+                prefix: _,
+                suffix: _,
+                content: con,
+            } => con.len(),
+            Content::Concatenation(content) => content.iter().fold(0, |acc, s| acc + s.len()),
         }
     }
 
@@ -64,21 +67,25 @@ impl Content {
                     let amnt = chars.len();
                     out.write_all(chars.into_iter().collect::<String>().as_bytes())?;
                     Ok(amnt)
-                },
-                Content::Tag{prefix, suffix, content} => {
+                }
+                Content::Tag {
+                    prefix,
+                    suffix,
+                    content,
+                } => {
                     out.write_all(prefix.as_bytes())?;
                     let amnt = content.write(out, limit)?;
                     out.write_all(suffix.as_bytes())?;
                     Ok(amnt)
-                },
+                }
                 Content::Concatenation(content) => {
                     let mut amnt = 0;
                     for c in content {
-                        if limit-amnt == 0 {
+                        if limit - amnt == 0 {
                             break;
                         }
 
-                        amnt += c.write(out, limit-amnt)?;
+                        amnt += c.write(out, limit - amnt)?;
                     }
                     Ok(amnt)
                 }
@@ -86,6 +93,23 @@ impl Content {
         } else {
             Ok(0)
         }
+    }
+}
+
+fn animate(content: Content, end_idx: usize, delay: f64, iter: impl Iterator<Item = usize>) {
+    let mut last = 0;
+    for i in iter {
+        last = i;
+        content.write(&mut stdout(), i).unwrap();
+        println!();
+        stdout().flush().unwrap();
+
+        sleep(Duration::from_secs_f64(delay));
+    }
+
+    if last != end_idx {
+        content.write(&mut stdout(), end_idx).unwrap();
+        println!()
     }
 }
 
@@ -124,42 +148,16 @@ fn main() {
     println!("{}", serde_json::to_string(&content).unwrap());*/
 
     let mut input = String::new();
-    stdin().read_to_string(&mut input).expect("Unable to read from stdin");
+    stdin()
+        .read_to_string(&mut input)
+        .expect("Unable to read from stdin");
 
     let content: Content = serde_json::from_str(&input).expect("Unable to parse input as json");
 
+    let content_len = content.len();
+    let base_iter = args.cut..=content_len;
     match args.mode {
-        Mode::Forward => {
-            let mut last = 0;
-            for i in (args.cut..=content.len()).step_by(args.step) {
-                last = i;
-                content.write(&mut stdout(), i).unwrap();
-                println!();
-                stdout().flush().unwrap();
-
-                sleep(Duration::from_secs_f64(args.delay));
-            }
-
-            if last != content.len() {
-                content.write(&mut stdout(), content.len()).unwrap();
-                println!()
-            }
-        },
-        Mode::Reverse => {
-            let mut last = 0;
-            for i in (args.cut..=content.len()).rev().step_by(args.step) {
-                last = i;
-                content.write(&mut stdout(), i).unwrap();
-                println!();
-                stdout().flush().unwrap();
-
-                sleep(Duration::from_secs_f64(args.delay));
-            }
-
-            if last != args.cut {
-                content.write(&mut stdout(), args.cut).unwrap();
-                println!()
-            }
-        }
-    }
+        Mode::Forward => animate(content, content_len, args.delay, base_iter.step_by(args.step)),
+        Mode::Reverse => animate(content, args.cut, args.delay, base_iter.rev().step_by(args.step)),
+    };
 }
