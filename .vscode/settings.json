@@ -1,0 +1,7 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "rust/schedule/Cargo.toml",
+        "rust/ipc/Cargo.toml",
+        "rust/text-animator/Cargo.toml"
+    ]
+}

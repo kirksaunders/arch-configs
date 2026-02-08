@@ -25,10 +25,10 @@ for_window [instance="updater"] resize set width 800 px
 for_window [instance="updater"] move position center
 
 # Configure pavucontrol
-for_window [class="Pavucontrol"] floating enable
-for_window [class="Pavucontrol"] sticky enable
-for_window [class="Pavucontrol"] resize set height 700 px
-for_window [class="Pavucontrol"] move position center
+for_window [class="pavucontrol"] floating enable
+for_window [class="pavucontrol"] sticky enable
+for_window [class="pavucontrol"] resize set height 700 px
+for_window [class="pavucontrol"] move position center
 
 # Configure gsimplecal
 for_window [class="Gsimplecal"] floating enable
@@ -49,6 +49,9 @@ exec --no-startup-id /usr/lib/mate-polkit/polkit-mate-authentication-agent-1
 
 # Launch terminal with neofetch
 exec --no-startup-id alacritty -e bash -c 'neofetch && bash'
+
+# Start pulseeffects
+exec --no-startup-id gtk-launch com.github.wwmm.pulseeffects.desktop -- -w
 
 # Disable mouse_warping because it seems to move mouse to other monitor when
 # moving a window to other monitor

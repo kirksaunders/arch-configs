@@ -4,8 +4,8 @@ CORE="${1}"
 OUTPUT=$(sensors -Au 2>/dev/null)
 
 IFS=$'\n'
-DATA=$(echo "${OUTPUT}" | grep -E -A2 "${CORE}")
-CURRENT=$(echo "${DATA}" | grep -Po "(?<=_input: )([0-9]+)")
+DATA=$(echo "${OUTPUT}" | grep -E -A2 "${CORE}:")
+CURRENT=$(echo "${DATA}" | grep -Po "(?<=temp2_input: )([0-9]+)")
 #HIGH=$(echo "${DATA}" | grep -Po "(?<=_max: )([0-9]+)")
 #CRIT=$(echo "${DATA}" | grep -Po "(?<=_crit: )([0-9]+)")
 

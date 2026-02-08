@@ -119,7 +119,7 @@ media-command = $HOME/.config/polybar/scripts/media.sh | ipc -p -s=/tmp/media se
 updates-command = ipc -s=/tmp/updates-in server -d | schedule -i=60 $HOME/.config/polybar/scripts/updates.sh | ipc -p -s=/tmp/updates server -d -m=1
 bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh bond0 | ipc -p -s=/tmp/bandwidth server -d -m=1
 cpu-usage-command = ipc -s=/tmp/cpu-usage-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-usage.sh | ipc -p -s=/tmp/cpu-usage server -d -m=1
-cpu-temp-command = ipc -s=/tmp/cpu-temp-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-temp.sh Tdie | ipc -p -s=/tmp/cpu-temp server -d -m=1
+cpu-temp-command = ipc -s=/tmp/cpu-temp-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/cpu-temp.sh CPU | ipc -p -s=/tmp/cpu-temp server -d -m=1
 date-command = ipc -s=/tmp/date-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/date.sh | ipc -p -s=/tmp/date server -d -m=1
 time-command = ipc -s=/tmp/time-in server -d | schedule -i=1 $HOME/.config/polybar/scripts/time.sh | ipc -p -s=/tmp/time server -d -m=1
 i3-workspace-command = i3-msg -t subscribe -m '[ "workspace" ]' | schedule -i=1 $HOME/.config/polybar/scripts/i3-workspace.sh
