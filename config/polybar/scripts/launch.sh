@@ -22,5 +22,5 @@ then
     polybar vnc &
 else
     polybar left &
-    polybar right &
+    #polybar right &
 fi
