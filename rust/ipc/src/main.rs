@@ -1,26 +1,27 @@
-use std::path::Path;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
-//use std::process::{Command, Stdio};
+mod reader;
+mod writer;
 
-use async_std::task;
-use async_std::task::sleep;
-use async_std::io::{stdin, stdout};
-use async_std::sync::Mutex;
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
-use futures::future::{AbortHandle, Abortable, Aborted, join};
-use futures::io::BufReader;
-use futures::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, Future, StreamExt};
-
-use tokio::net::{UnixListener, UnixStream};
-
-use async_compat::{Compat, CompatExt};
-
-use async_ctrlc::CtrlC;
-
+use futures::{
+    stream::{FuturesOrdered, FuturesUnordered},
+    FutureExt, StreamExt,
+};
 use structopt::StructOpt;
+use tokio::{
+    io::{stdin, stdout, AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    join,
+    net::{UnixListener, UnixStream},
+};
 
+use tokio::{select, spawn, sync::Mutex, time::sleep};
+
+use crate::reader::Stdin;
+use crate::writer::{AsyncWriteInterceptor, AsyncWriteObserver};
 use Mode::*;
 
 #[derive(StructOpt, Debug)]
@@ -35,7 +36,7 @@ struct Arguments {
 
     /// Whether to run in server or client mode.
     #[structopt(subcommand)]
-    mode: Mode
+    mode: Mode,
 }
 
 #[derive(StructOpt, Debug)]
@@ -48,7 +49,7 @@ enum Mode {
 
         /// Number of lines of data to keep in memory that will be written to new client connections.
         #[structopt(short = "m", long = "memory", default_value = "0")]
-        memory: usize
+        memory: usize,
     },
 
     /// Run in client mode (connects to existing socket).
@@ -59,266 +60,261 @@ enum Mode {
 
         /// Quit the connection when input from stdin is exhausted.
         #[structopt(short = "q", long = "quitearly")]
-        quit: bool
+        quit: bool,
+    },
+}
+
+type OutputStream = Box<dyn AsyncWrite + Unpin + Send>;
+
+struct Memory {
+    buf: Vec<u8>,
+    lines: Vec<Box<[u8]>>,
+}
+
+impl Memory {
+    fn new(capacity: usize) -> Self {
+        Self {
+            buf: Vec::new(),
+            lines: Vec::with_capacity(capacity),
+        }
+    }
+
+    fn append_line(&mut self, line: Box<[u8]>) {
+        if self.lines.len() >= self.lines.capacity() {
+            self.lines.remove(0);
+        }
+        self.lines.push(line);
     }
 }
 
-/*
-#[derive(StructOpt, Debug)]
-enum Action {
-    /// Schedule a command to be run periodically or when a message is received on the given socket.
-    Schedule {
-        /// Regular interval to run command (in seconds). If not supplied, the command will only be run once at the start and then when a message appears on the socket.
-        #[structopt(short = "i", long = "interval")]
-        interval: Option<f64>,
+impl AsyncWriteObserver for Memory {
+    fn write(&mut self, data: &[u8]) {
+        let mut lines = data.split_inclusive(|byte| *byte == '\n' as u8);
 
-        /// Whether to wait for the previous run of the command before running again or not.
-        #[structopt(short = "w", long = "wait")]
-        wait: bool,
-
-        /// Command to run (encapsulate this as a string).
-        command: String
-    }
-}
-
-fn schedule(args: &Arguments) {
-    let listener = block_on(LocalSocketListener::bind(args.socket.clone()))
-            .expect("Unable to open socket for listening");
-    
-    let server = listener.incoming().try_for_each(|conn| async move {
-        use futures::stream::StreamExt;
-
-        let mut cmd = match &args.action {
-            Notify => panic!("This shouldn't happen"),
-            Schedule { interval: _, command } => Command::new("/bin/bash")
-                .arg("-c")
-                .arg(command)
-                .stdin(Stdio::piped())
-                .spawn()
-                .expect("Unable to run command")
-        };
-
-        let mut outstdin = cmd.stdin.take().expect("Unable to open stdin for command");
-
-        let mut lines = BufReader::new(conn).lines();
-        while let Some(line) = lines.next().await {
-            let mut line = line.expect("Unable to read from socket connection");
-            line.push('\n');
-
-            // Only write if command is still running
-            if let Ok(None) = cmd.try_wait() {
-                outstdin.write_all(line.as_bytes()).expect("Unable to write to stdin for command");
+        while let Some(line) = lines.next() {
+            if line.len() == 0 {
+                continue;
             }
-        }
 
-        Ok(())
-    });
-
-    block_on(server).expect("Unable to start server listener loop");
-}*/
-
-struct StreamData {
-    output: Vec<Box<dyn AsyncWrite + Unpin + Send>>,
-    memory: Vec<String>
-}
-
-type StreamVec = Vec<Box<dyn AsyncWrite + Unpin + Send>>;
-
-async fn forward<I: AsyncRead + Unpin>(input: I, data: Arc<Mutex<StreamData>>) {
-    let mut lines = BufReader::new(input).lines();
-    while let Some(line) = lines.next().await {
-        let mut line = line.expect("Unable to read from socket");
-        line.push('\n');
-
-        let mut data = data.lock().await;
-
-        let mut i = 0;
-        while i < data.output.len() {
-            match data.output[i].write_all(line.as_bytes()).await {
-                Ok(_) => i += 1,
-                _ => { data.output.swap_remove(i); }
+            if line[line.len() - 1] == '\n' as u8 {
+                // Small optimization to avoid a copy if the held buf is empty
+                if self.buf.len() > 0 {
+                    self.buf.extend_from_slice(line);
+                    self.append_line(Box::from(self.buf.as_slice()));
+                    self.buf.clear();
+                } else {
+                    self.append_line(Box::from(line));
+                }
+            } else {
+                // Just append to the buf
+                self.buf.extend_from_slice(line);
             }
-        }
-
-        if data.memory.capacity() > 0 {
-            if data.memory.len() == data.memory.capacity() {
-                data.memory.remove(0);
-            }
-            data.memory.push(line);
         }
     }
 }
 
-async fn listen(socket: impl AsRef<Path>, data: Arc<Mutex<StreamData>>) {
-    let listener = UnixListener::bind(socket).expect("Unable to create socket");
+async fn write_and_flush(data: &String, stream: &mut OutputStream) -> std::io::Result<()> {
+    stream.write_all(data.as_bytes()).await?;
+    stream.flush().await
+}
 
-    'outer: loop {
-        match listener.accept().await {
-            Ok((stream, _addr)) => {
-                let stream = stream.compat();
-                let (stream_in, mut stream_out) = stream.split();
-        
+async fn forward_mutable(input: impl AsyncBufRead + Unpin, outputs: Arc<Mutex<Vec<OutputStream>>>) {
+    let mut lines = input.lines();
+    loop {
+        let result = lines.next_line().await;
+        if let Err(_) = result {
+            // Treat any error as a pipe close
+            return;
+        }
+        match result.unwrap() {
+            Some(mut line) => {
+                line.push('\n');
+
+                let mut outputs = outputs.lock().await;
+                let mut failed_indices = Vec::new();
                 {
-                    let mut data = data.lock().await;
-
-                    for line in data.memory.iter() {
-                        match stream_out.write_all(line.as_bytes()).await {
-                            Ok(_) => (),
-                            _ => break 'outer // client connection already closed?
-                        }
+                    // Write to all outputs concurrently
+                    let mut futures = FuturesOrdered::new();
+                    for (i, output) in outputs.iter_mut().enumerate() {
+                        // Process them in reverse order (via push_front), which will make removals easier
+                        // after the fact
+                        futures.push_front(
+                            write_and_flush(&line, output).map(move |result| (i, result)),
+                        );
                     }
 
-                    data.output.push(Box::new(stream_out));
+                    while let Some(result) = futures.next().await {
+                        if let (i, Err(_)) = result {
+                            failed_indices.push(i);
+                        }
+                    }
                 }
 
-                let data2 = data.clone();
-                task::spawn(async move {
-                    // simply using copy doesn't ensure each line is flushed after writing
-                    //async_std::io::copy(&mut stream_in, &mut stdout()).await.expect("Unable to copy from socket to stdout");
-
-                    let mut lines = BufReader::new(stream_in).lines();
-                    let mut out = stdout();
-                    while let Some(line) = lines.next().await {
-                        let mut line = line.expect("Unable to read from socket");
-                        line.push('\n');
-                        out.write_all(line.as_bytes()).await.expect("Unable to write to stdout");
-                    }
-                    
-
-                    // At this point the connection has closed, so we should remove it from the output vector.
-                    // However, since we don't know which element in the vector refers to this connection, let's
-                    // just cleanup the whole thing.
-                    let mut data = data2.lock().await;
-
-                    let mut i = 0;
-                    while i < data.output.len() {
-                        match data.output[i].write(&[]).await {
-                            Ok(_) => i += 1,
-                            _ => { data.output.swap_remove(i); }
-                        }
-                    }
-                });
-            },
-            Err(e) => eprintln!("Unable to establish client connection: {}", e)
+                // Remove any failed streams from the outputs vec so we don't continue to try to write to
+                // them
+                for i in failed_indices.into_iter() {
+                    outputs.swap_remove(i);
+                }
+            }
+            None => return,
         }
     }
 }
 
-async fn wrap_ctrlc<F, T>(fut: F) -> Result<T, Aborted>
-where
-    F: Future<Output = T> + Send,
-    T: Send
-{
-    let (abort_handle1, abort_registration1) = AbortHandle::new_pair();
-    let (abort_handle2, abort_registration2) = AbortHandle::new_pair();
-    let ctrlc = CtrlC::new().expect("Unable to create ctrl+c hook");
+async fn forward_immutable(
+    input: impl AsyncBufRead + Unpin,
+    mut outputs: Box<[OutputStream]>,
+    quit_on_output_failures: bool,
+) {
+    let mut lines = input.lines();
+    loop {
+        let result = lines.next_line().await;
+        if let Err(_) = result {
+            // Treat any error as a pipe close
+            return;
+        }
+        match result.unwrap() {
+            Some(mut line) => {
+                line.push('\n');
 
-    task::spawn(Abortable::new(async move {
-        ctrlc.await;
-        abort_handle1.abort();
-    }, abort_registration2));
-
-    Abortable::new(Compat::new(async move {
-        let ret = fut.await;
-        abort_handle2.abort();
-        ret
-    }), abort_registration1).await
+                // Write to all outputs concurrently
+                let mut futures = FuturesUnordered::new();
+                for output in outputs.iter_mut() {
+                    futures.push(write_and_flush(&line, output));
+                }
+                while let Some(result) = futures.next().await {
+                    if let Err(_) = result {
+                        if quit_on_output_failures {
+                            return;
+                        }
+                    }
+                }
+            }
+            None => return,
+        }
+    }
 }
 
-async fn server(socket: impl AsRef<Path>, passthrough: bool, delete: bool, memory: usize) {
+async fn client(socket: impl AsRef<Path>, passthrough: bool, retry: Option<f64>, quit_early: bool) {
+    let stream = loop {
+        match UnixStream::connect(socket.as_ref()).await {
+            Ok(stream) => break stream,
+            Err(e) => {
+                if let Some(delay) = retry {
+                    assert!(delay > 0f64, "Retry interval must be greater than zero");
+                    sleep(Duration::from_secs_f64(delay)).await;
+                } else {
+                    panic!("Unable to connect to socket: {}", e);
+                }
+            }
+        }
+    };
+    let (stream_in, stream_out) = stream.into_split();
+
+    // Forward stdin to the socket input (and stdout if passthrough is enabled)
+    let into_socket = forward_immutable(
+        BufReader::new(Stdin::new(512)),
+        if passthrough {
+            Box::new([Box::new(stdout()), Box::new(stream_out)])
+        } else {
+            Box::new([Box::new(stream_out)])
+        },
+        true, // If we fail to write to either stdout or the server, then we might as well quit
+    );
+    // Forward socket output to stdout
+    let out_of_socket = forward_immutable(
+        BufReader::new(stream_in),
+        Box::new([Box::new(stdout())]),
+        true,
+    );
+
+    // If we want to quit after stdin has closed, then we can simply use select. If we want to continue after stdin closes, we must spawn
+    // the stdin future into the background, then await the out_of_socket future in the foreground. In both cases, the program quits if
+    // the server exits.
+    if quit_early {
+        select! {
+            _ = into_socket => {}
+            _ = out_of_socket => {}
+        }
+    } else {
+        spawn(into_socket);
+        out_of_socket.await;
+    }
+}
+
+async fn accept_connections(
+    socket: impl AsRef<Path>,
+    outputs: Arc<Mutex<Vec<OutputStream>>>,
+    memory: Option<&'static Mutex<Memory>>,
+) {
+    let listener = UnixListener::bind(socket).expect("Unable to create socket");
+    'outer: loop {
+        if let Ok((stream, _)) = listener.accept().await {
+            let (stream_in, mut stream_out) = stream.into_split();
+
+            if let Some(memory) = memory {
+                let memory = memory.lock().await;
+
+                for line in memory.lines.iter() {
+                    match stream_out.write_all(line).await {
+                        Ok(_) => (),
+                        _ => continue 'outer, // client connection already closed?
+                    }
+                }
+            }
+
+            {
+                let mut outputs = outputs.lock().await;
+                outputs.push(Box::new(stream_out));
+            }
+
+            // We need to spawn here, otherwise we'll never pick up a new client connection
+            // until this one ends.
+            //
+            // TODO: After this forward function returns, the client connection is closed. It would be
+            //       great to remove it from the outputs vec at that point, but it's pretty non-trivial.
+            //       For now, we just wait for the next write to outputs for the stale streams to be
+            //       removed.
+            spawn(forward_immutable(
+                BufReader::new(stream_in),
+                Box::new([Box::new(stdout())]),
+                true,
+            ));
+        }
+    }
+}
+
+async fn server(socket: impl AsRef<Path>, passthrough: bool, delete: bool, memory_size: usize) {
     if delete {
         let _ = std::fs::remove_file(socket.as_ref());
     }
-    
-    let mut data = StreamData {
-        output: Vec::new(),
-        memory: Vec::with_capacity(memory)
+
+    let mut outputs: Vec<OutputStream> = Vec::new();
+    if passthrough {
+        outputs.push(Box::new(stdout()));
+    }
+    let memory = if memory_size > 0 {
+        let memory: &'static Mutex<Memory> =
+            Box::leak(Box::new(Mutex::new(Memory::new(memory_size))));
+        outputs.push(Box::new(AsyncWriteInterceptor::new(&memory)));
+        Some(memory)
+    } else {
+        None
     };
 
-    if passthrough {
-        data.output.push(Box::new(stdout()));
-    }
-
-    let data = Arc::new(Mutex::new(data));
-
-    let forwarder = forward(stdin(), data.clone());
-    let listener = listen(socket.as_ref(), data);
-
-    let _ = wrap_ctrlc(join(forwarder, listener)).await;
-
-    let _ = std::fs::remove_file(socket.as_ref());
+    let outputs = Arc::new(Mutex::new(outputs));
+    join!(
+        forward_mutable(BufReader::new(stdin()), outputs.clone()),
+        accept_connections(socket, outputs, memory)
+    );
 }
 
-async fn connect(socket: impl AsRef<Path>, output: StreamVec, retry: Option<f64>, quit: bool) {
-    let mut output = output;
-    let stream = loop {
-        match UnixStream::connect(socket.as_ref()).await {
-            Ok(stream) => break stream.compat(),
-            Err(e) => if let Some(delay) = retry {
-                assert!(delay > 0f64, "Retry interval must be greater than zero");
-                sleep(Duration::from_secs_f64(delay)).await;
-            } else {
-                panic!("Unable to connect to socket: {}", e);
-            }
-        }
-    };
-
-    let (stream_in, stream_out) = stream.split();
-
-    output.push(Box::new(stream_out));
-
-    let (abort_handle1, abort_registration1) = AbortHandle::new_pair();
-    let (abort_handle2, abort_registration2) = AbortHandle::new_pair();
-
-    task::spawn(Abortable::new(async move {
-        let mut lines = BufReader::new(stdin()).lines();
-        while let Some(line) = lines.next().await {
-            let mut line = line.expect("Unable to read from stdin");
-            line.push('\n');
-    
-            for out in output.iter_mut() {
-                out.write_all(line.as_bytes()).await.expect("Unable to write to output");
-            }
-        }
-
-        // Quit the program if quitearly is on and we have read all input from stdin
-        if quit {
-            abort_handle2.abort();
-        }
-    }, abort_registration1));
-
-    let _ = Abortable::new(async move {
-        // simply using copy doesn't ensure each line is flushed after writing
-        //async_std::io::copy(&mut stream_in, &mut stdout()).await.expect("Unable to copy from socket to stdout");
-
-        let mut lines = BufReader::new(stream_in).lines();
-        let mut out = stdout();
-        while let Some(line) = lines.next().await {
-            let mut line = line.expect("Unable to read from socket");
-            line.push('\n');
-            out.write_all(line.as_bytes()).await.expect("Unable to write to stdout");
-        }
-
-        // We only reach this point if the above line finishes (meaning the connection has been broken)
-        abort_handle1.abort();
-    }, abort_registration2).await;
-}
-
-async fn client(socket: impl AsRef<Path>, passthrough: bool, retry: Option<f64>, quit: bool) {
-    let mut output: StreamVec = Vec::new();
-    if passthrough {
-        output.push(Box::new(stdout()));
-    }
-
-    let _ = wrap_ctrlc(connect(socket.as_ref(), output, retry, quit)).await;
-}
-
-#[async_std::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let args = Arguments::from_args();
 
     match args.mode {
         Server { delete, memory } => server(args.socket, args.passthrough, delete, memory).await,
-        Client { retry, quit } => client(args.socket, args.passthrough, retry, quit).await
+        Client { retry, quit } => client(args.socket, args.passthrough, retry, quit).await,
     };
 }
