@@ -104,7 +104,7 @@ async fn read_write_loop(cli: &CLI, data: Arc<Mutex<ChildData>>) {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let cli = CLI::from_args();
     let data = Arc::new(Mutex::new(ChildData { proc: None }));
