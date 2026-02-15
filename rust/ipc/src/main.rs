@@ -9,12 +9,13 @@ use std::{
 };
 
 use futures::{
-    FutureExt, StreamExt, stream::{FuturesOrdered, FuturesUnordered}
+    stream::{FuturesOrdered, FuturesUnordered},
+    FutureExt, StreamExt,
 };
 use ringbuffer::{AllocRingBuffer, RingBuffer};
 use structopt::StructOpt;
 use tokio::{
-    io::{stdin, stdout, AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
+    io::{stdout, AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
     join,
     net::{UnixListener, UnixStream},
     select, spawn,
@@ -22,7 +23,10 @@ use tokio::{
     time::sleep,
 };
 
-use crate::{reader::Stdin, writer::{AsyncWriteInterceptor, AsyncWriteObserver}};
+use crate::{
+    reader::Stdin,
+    writer::{AsyncWriteInterceptor, AsyncWriteObserver},
+};
 use Mode::*;
 
 #[derive(StructOpt, Debug)]
@@ -331,7 +335,7 @@ async fn server(socket: impl AsRef<Path>, passthrough: bool, delete: bool, memor
 
     let outputs = Arc::new(Mutex::new(outputs));
     join!(
-        forward_mutable(BufReader::new(stdin()), outputs.clone()),
+        forward_mutable(BufReader::new(Stdin::new(512)), outputs.clone()),
         accept_connections(socket, outputs, memory)
     );
 }

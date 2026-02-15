@@ -1,25 +1,21 @@
 use std::{
-    io::{ErrorKind, Read, stdin},
+    collections::VecDeque,
+    io::{stdin, ErrorKind, Read},
     pin::Pin,
-    task::{Poll, ready},
+    task::{ready, Poll},
     thread,
 };
 
 use tokio::{
     io::{AsyncRead, ReadBuf},
-    sync::mpsc::{Receiver, channel},
+    sync::mpsc::{channel, Receiver},
 };
 use tokio_util::sync::PollSender;
-
-enum StdinState {
-    PendingSend,
-    PendingResult,
-}
 
 /// Tokio's stdin operates in a weird middle ground between blocking and non-blocking. Namely, when
 /// the runtime is shutting down, any outstanding calls to stdin.read will continue to block, which
 /// prevent the program from exiting. Ref: https://docs.rs/tokio/latest/tokio/io/struct.Stdin.html
-/// 
+///
 /// This implementation does not have that limitation. It spins up a platform thread to handle reads
 /// from stdin, then passes the read results back to the async context via channels. It should act
 /// the exact same as Tokio's stdin otherwise. There are some performance implications however:
@@ -29,7 +25,9 @@ enum StdinState {
 pub struct Stdin {
     in_sender: PollSender<usize>,
     out_receiver: Receiver<std::io::Result<Box<[u8]>>>,
-    state: StdinState,
+    available: Option<(Box<[u8]>, usize, usize)>,
+    pending_reads: VecDeque<usize>,
+    pending_total: usize,
 }
 
 impl Stdin {
@@ -52,32 +50,54 @@ impl Stdin {
         Self {
             in_sender: PollSender::new(in_sender),
             out_receiver,
-            state: StdinState::PendingSend,
+            available: None,
+            pending_reads: VecDeque::new(),
+            pending_total: 0,
+        }
+    }
+
+    fn fill_from_available(&mut self, buf: &mut ReadBuf<'_>) -> bool {
+        match self.available.take() {
+            Some((avail, start, len)) => {
+                let to_return = std::cmp::min(len, buf.remaining());
+                buf.put_slice(&avail[start..start + to_return]);
+
+                if to_return < len {
+                    self.available = Some((avail, start + to_return, len - to_return));
+                }
+                true
+            }
+            None => false,
         }
     }
 }
 
 impl AsyncRead for Stdin {
     fn poll_read(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<std::io::Result<()>> {
-        let this = self.get_mut();
+        // Return any data that we already have available
+        if self.fill_from_available(buf) {
+            return Poll::Ready(Ok(()));
+        }
 
-        // First, send input to reader thread via the sender
-        if let StdinState::PendingSend = this.state {
-            let reserve_result = ready!(this.in_sender.poll_reserve(cx));
+        // Backpressure: don't request more bytes if we have outstanding read requests that can
+        //               account for what is being requested here.
+        if self.pending_total < buf.remaining() {
+            let reserve_result = ready!(self.in_sender.poll_reserve(cx));
             match reserve_result {
                 Ok(_) => {
                     // Send input, transition state, then continue
-                    if let Err(_) = this.in_sender.send_item(buf.remaining()) {
+                    if let Err(_) = self.in_sender.send_item(buf.remaining()) {
                         return Poll::Ready(Err(std::io::Error::new(
                             ErrorKind::BrokenPipe,
                             "Communication error while trying to read from stdin; pipe is potentially closed",
                         )))
                     }
-                    this.state = StdinState::PendingResult;
+                    self.pending_reads.push_back(buf.remaining());
+                    self.pending_total += buf.remaining();
                 },
                 Err(_) => return Poll::Ready(Err(std::io::Error::new(
                     ErrorKind::BrokenPipe,
@@ -86,21 +106,26 @@ impl AsyncRead for Stdin {
             }
         }
 
-        // Then, read the result back from the reader thread via the receiver
-        let read_result = ready!(this.out_receiver.poll_recv(cx));
-        let final_result = match read_result {
+        // Read the result back from the reader thread via the receiver
+        let read_result = ready!(self.out_receiver.poll_recv(cx));
+        let req_len = self
+            .pending_reads
+            .pop_front()
+            .expect("Unreachable: We cannot receive more results than we requested");
+        self.pending_total -= req_len;
+        match read_result {
             Some(result) => match result {
                 Ok(data) => {
-                    buf.put_slice(&data);
+                    let len = data.len();
+                    if len > 0 {
+                        self.available = Some((data, 0, len));
+                        self.fill_from_available(buf);
+                    }
                     Poll::Ready(Ok(()))
                 }
                 Err(e) => Poll::Ready(Err(e)),
             },
             None => Poll::Ready(Ok(())),
-        };
-
-        // Make sure we clear the state before returning
-        this.state = StdinState::PendingSend;
-        final_result
+        }
     }
 }
