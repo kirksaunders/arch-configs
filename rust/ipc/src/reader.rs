@@ -7,7 +7,7 @@ use std::{
 
 use tokio::{
     io::{AsyncRead, ReadBuf},
-    sync::mpsc::{channel, Receiver},
+    sync::mpsc::{Receiver, channel},
 };
 use tokio_util::sync::PollSender;
 

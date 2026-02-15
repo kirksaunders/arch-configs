@@ -1,11 +1,11 @@
 use std::{
     pin::Pin,
-    task::{ready, Context, Poll},
+    task::{Context, Poll, ready},
 };
 
 use tokio::{
     io::AsyncWrite,
-    sync::{Mutex, MutexGuard},
+    sync::{RwLock, RwLockWriteGuard},
 };
 use tokio_util::sync::ReusableBoxFuture;
 
@@ -23,32 +23,35 @@ pub trait AsyncWriteObserver {
 /// As an example use case, you could write an observer to buffer writes in memory, then pass
 /// the interceptor to any function accepts impl AsyncWrite.
 pub struct AsyncWriteInterceptor<'a, T> {
-    observer: &'a Mutex<T>,
-    lock_future: ReusableBoxFuture<'a, MutexGuard<'a, T>>,
+    observer: &'a RwLock<T>,
+    lock_future: ReusableBoxFuture<'a, RwLockWriteGuard<'a, T>>,
 }
 
-impl<'a, T: Send> AsyncWriteInterceptor<'a, T> {
-    pub fn new(observer: &'a Mutex<T>) -> Self {
+impl<'a, T: Send + Sync> AsyncWriteInterceptor<'a, T> {
+    pub fn new(observer: &'a RwLock<T>) -> Self {
         Self {
             observer,
             // Go ahead and create the first future
-            lock_future: ReusableBoxFuture::new(observer.lock()),
+            lock_future: ReusableBoxFuture::new(observer.write()),
         }
     }
 
-    fn acquire_lock(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<MutexGuard<'a, T>> {
-        // Acquire the mutex lock before proceeding. We're using tokio's async mutex, so we have
+    fn acquire_lock(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<RwLockWriteGuard<'a, T>> {
+        // Acquire the write lock before proceeding. We're using tokio's async RwLock, so we have
         // to delegate to its poll method.
         let observer = ready!(self.lock_future.poll(cx));
         // At this point, we've successfully acquired the lock. We can call the observer
         // and also create the next lock future
-        let new_fut = self.observer.lock();
+        let new_fut = self.observer.write();
         self.lock_future.set(new_fut);
         Poll::Ready(observer)
     }
 }
 
-impl<'a, T: AsyncWriteObserver + Send> AsyncWrite for AsyncWriteInterceptor<'a, T> {
+impl<'a, T: AsyncWriteObserver + Send + Sync> AsyncWrite for AsyncWriteInterceptor<'a, T> {
     fn poll_write(
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,

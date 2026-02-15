@@ -9,8 +9,7 @@ use std::{
 };
 
 use futures::{
-    stream::{FuturesOrdered, FuturesUnordered},
-    FutureExt, StreamExt,
+    FutureExt, StreamExt, stream::{FuturesOrdered, FuturesUnordered}
 };
 use ringbuffer::{AllocRingBuffer, RingBuffer};
 use structopt::StructOpt;
@@ -18,12 +17,12 @@ use tokio::{
     io::{stdin, stdout, AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
     join,
     net::{UnixListener, UnixStream},
+    select, spawn,
+    sync::{Mutex, RwLock},
+    time::sleep,
 };
 
-use tokio::{select, spawn, sync::Mutex, time::sleep};
-
-use crate::reader::Stdin;
-use crate::writer::{AsyncWriteInterceptor, AsyncWriteObserver};
+use crate::{reader::Stdin, writer::{AsyncWriteInterceptor, AsyncWriteObserver}};
 use Mode::*;
 
 #[derive(StructOpt, Debug)]
@@ -267,33 +266,35 @@ async fn client(socket: impl AsRef<Path>, passthrough: bool, retry: Option<f64>,
 async fn accept_connections(
     socket: impl AsRef<Path>,
     outputs: Arc<Mutex<OutputStreamStorage>>,
-    memory: Option<&'static Mutex<Memory>>,
+    memory: Option<&'static RwLock<Memory>>,
 ) {
     let listener = UnixListener::bind(socket).expect("Unable to create socket");
-    'outer: loop {
+    loop {
         if let Ok((stream, _)) = listener.accept().await {
             let (stream_in, mut stream_out) = stream.into_split();
 
-            if let Some(memory) = memory {
-                let memory = memory.lock().await;
-
-                for line in memory.lines.iter() {
-                    match stream_out.write_all(line).await {
-                        Ok(_) => (),
-                        _ => continue 'outer, // client connection already closed?
-                    }
-                }
-            }
-
-            let stream_id = {
-                let mut outputs = outputs.lock().await;
-                outputs.push(Box::new(stream_out))
-            };
-
             // We need to spawn here, otherwise we'll never pick up a new client connection
             // until this one ends.
-            let outputs_clone = outputs.clone();
+            let outputs = outputs.clone();
             spawn(async move {
+                if let Some(memory) = memory {
+                    // TODO: Blocking the memory while writing to the output stream is pretty unfortunate.
+                    //       Perhaps it's better to copy the memory here instead.
+                    let memory = memory.read().await;
+
+                    for line in memory.lines.iter() {
+                        match stream_out.write_all(line).await {
+                            Ok(_) => (),
+                            _ => return, // client connection already closed?
+                        }
+                    }
+                }
+
+                let stream_id = {
+                    let mut outputs = outputs.lock().await;
+                    outputs.push(Box::new(stream_out))
+                };
+
                 forward_immutable(
                     BufReader::new(stream_in),
                     Box::new([Box::new(stdout())]),
@@ -303,7 +304,7 @@ async fn accept_connections(
 
                 // At this point, the client has closed the connection. Remove it from the output
                 // storage
-                let mut outputs = outputs_clone.lock().await;
+                let mut outputs = outputs.lock().await;
                 outputs.remove(stream_id);
             });
         }
@@ -320,8 +321,8 @@ async fn server(socket: impl AsRef<Path>, passthrough: bool, delete: bool, memor
         outputs.push(Box::new(stdout()));
     }
     let memory = if memory_size > 0 {
-        let memory: &'static Mutex<Memory> =
-            Box::leak(Box::new(Mutex::new(Memory::new(memory_size))));
+        let memory: &'static RwLock<Memory> =
+            Box::leak(Box::new(RwLock::new(Memory::new(memory_size))));
         outputs.push(Box::new(AsyncWriteInterceptor::new(&memory)));
         Some(memory)
     } else {
