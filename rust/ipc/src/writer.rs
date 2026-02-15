@@ -1,13 +1,13 @@
 use std::{
-    future::Future,
     pin::Pin,
-    task::{ready, Poll},
+    task::{ready, Context, Poll},
 };
 
 use tokio::{
     io::AsyncWrite,
     sync::{Mutex, MutexGuard},
 };
+use tokio_util::sync::ReusableBoxFuture;
 
 /// Observer for AsyncWrite operations, which are exposed through `AsyncWriteInterceptor`.
 #[allow(unused)]
@@ -24,49 +24,50 @@ pub trait AsyncWriteObserver {
 /// the interceptor to any function accepts impl AsyncWrite.
 pub struct AsyncWriteInterceptor<'a, T> {
     observer: &'a Mutex<T>,
-    lock_future: Option<Pin<Box<dyn Future<Output = MutexGuard<'a, T>> + Send + 'a>>>,
+    lock_future: ReusableBoxFuture<'a, MutexGuard<'a, T>>,
 }
 
-impl<'a, T> AsyncWriteInterceptor<'a, T> {
+impl<'a, T: Send> AsyncWriteInterceptor<'a, T> {
     pub fn new(observer: &'a Mutex<T>) -> Self {
         Self {
             observer,
-            lock_future: None,
+            // Go ahead and create the first future
+            lock_future: ReusableBoxFuture::new(observer.lock()),
         }
+    }
+
+    fn acquire_lock(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<MutexGuard<'a, T>> {
+        // Acquire the mutex lock before proceeding. We're using tokio's async mutex, so we have
+        // to delegate to its poll method.
+        let observer = ready!(self.lock_future.poll(cx));
+        // At this point, we've successfully acquired the lock. We can call the observer
+        // and also create the next lock future
+        let new_fut = self.observer.lock();
+        self.lock_future.set(new_fut);
+        Poll::Ready(observer)
     }
 }
 
 impl<'a, T: AsyncWriteObserver + Send> AsyncWrite for AsyncWriteInterceptor<'a, T> {
     fn poll_write(
-        self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
         buf: &[u8],
     ) -> Poll<std::io::Result<usize>> {
-        let this = self.get_mut();
-        // Acquire the mutex lock before proceeding. We're using tokio's async
-        // mutex, so we have to delegate to its poll method.
-        if let None = this.lock_future {
-            let fut = Box::pin(this.observer.lock());
-            this.lock_future = Some(fut);
-        }
-        let mut observer = ready!(this.lock_future.as_mut().unwrap().as_mut().poll(cx));
-        // At this point, we've successfully acquired the lock
-        this.lock_future = None;
+        let mut observer = ready!(self.acquire_lock(cx));
         observer.write(buf);
         Poll::Ready(Ok(buf.len()))
     }
 
-    fn poll_flush(
-        self: std::pin::Pin<&mut Self>,
-        _: &mut std::task::Context<'_>,
-    ) -> Poll<std::io::Result<()>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        let mut observer = ready!(self.acquire_lock(cx));
+        observer.flush();
         Poll::Ready(Ok(()))
     }
 
-    fn poll_shutdown(
-        self: std::pin::Pin<&mut Self>,
-        _: &mut std::task::Context<'_>,
-    ) -> Poll<std::io::Result<()>> {
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
+        let mut observer = ready!(self.acquire_lock(cx));
+        observer.shutdown();
         Poll::Ready(Ok(()))
     }
 }
