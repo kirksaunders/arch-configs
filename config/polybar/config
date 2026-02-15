@@ -114,7 +114,7 @@ modules-center = i3-workspace
 modules-right = updates bandwidth cpu-usage cpu-temp date time
 
 power-command = ipc -s=/tmp/power-in server -d | schedule $HOME/.config/polybar/scripts/power.sh | ipc -p -s=/tmp/power server -d -m=1
-volume-command = ipc -s=/tmp/volume-in server -d 2>/dev/null | schedule -i=2 $HOME/.config/polybar/scripts/volume.sh | ipc -p -s=/tmp/volume server -d -m=1
+volume-command = ipc -s=/tmp/volume-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/volume.sh | ipc -p -s=/tmp/volume server -d -m=1
 media-command = $HOME/.config/polybar/scripts/media.sh | ipc -p -s=/tmp/media server -d -m=1
 updates-command = ipc -s=/tmp/updates-in server -d | schedule -i=60 $HOME/.config/polybar/scripts/updates.sh | ipc -p -s=/tmp/updates server -d -m=1
 bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh bond0 | ipc -p -s=/tmp/bandwidth server -d -m=1
@@ -170,7 +170,7 @@ modules-left = power volume media
 modules-right = updates bandwidth cpu-usage cpu-temp date time
 
 power-command = ipc -s=/tmp/power-in server -d | schedule $HOME/.config/polybar/scripts/power-only-logout.sh
-volume-command = ipc -s=/tmp/volume-in server -d 2>/dev/null | schedule -i=2 $HOME/.config/polybar/scripts/volume.sh
+volume-command = ipc -s=/tmp/volume-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/volume.sh
 media-command = $HOME/.config/polybar/scripts/media.sh
 updates-command = ipc -s=/tmp/updates-in server -d | schedule -i=60 $HOME/.config/polybar/scripts/updates.sh
 bandwidth-command = ipc -s=/tmp/bandwidth-in server -d | schedule -i=2 $HOME/.config/polybar/scripts/bandwidth.sh bond0
