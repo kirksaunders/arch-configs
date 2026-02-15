@@ -161,6 +161,7 @@ name = "ipc"
 version = "0.1.0"
 dependencies = [
  "futures",
+ "ringbuffer",
  "structopt",
  "tokio",
  "tokio-util",
@@ -248,6 +249,12 @@ checksum = "21b2ebcf727b7760c461f091f9f0f539b77b8e87f2fd88131e7f1b433b3cece4"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "ringbuffer"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57b0b88a509053cbfd535726dcaaceee631313cef981266119527a1d110f6d2b"
 
 [[package]]
 name = "slab"

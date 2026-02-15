@@ -2,6 +2,7 @@ mod reader;
 mod writer;
 
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
@@ -11,6 +12,7 @@ use futures::{
     stream::{FuturesOrdered, FuturesUnordered},
     FutureExt, StreamExt,
 };
+use ringbuffer::{AllocRingBuffer, RingBuffer};
 use structopt::StructOpt;
 use tokio::{
     io::{stdin, stdout, AsyncBufRead, AsyncBufReadExt, AsyncWrite, AsyncWriteExt, BufReader},
@@ -68,22 +70,15 @@ type OutputStream = Box<dyn AsyncWrite + Unpin + Send>;
 
 struct Memory {
     buf: Vec<u8>,
-    lines: Vec<Box<[u8]>>,
+    lines: AllocRingBuffer<Box<[u8]>>,
 }
 
 impl Memory {
     fn new(capacity: usize) -> Self {
         Self {
             buf: Vec::new(),
-            lines: Vec::with_capacity(capacity),
+            lines: AllocRingBuffer::new(capacity),
         }
-    }
-
-    fn append_line(&mut self, line: Box<[u8]>) {
-        if self.lines.len() >= self.lines.capacity() {
-            self.lines.remove(0);
-        }
-        self.lines.push(line);
     }
 }
 
@@ -100,10 +95,10 @@ impl AsyncWriteObserver for Memory {
                 // Small optimization to avoid a copy if the held buf is empty
                 if self.buf.len() > 0 {
                     self.buf.extend_from_slice(line);
-                    self.append_line(Box::from(self.buf.as_slice()));
+                    self.lines.enqueue(Box::from(self.buf.as_slice()));
                     self.buf.clear();
                 } else {
-                    self.append_line(Box::from(line));
+                    self.lines.enqueue(Box::from(line));
                 }
             } else {
                 // Just append to the buf
@@ -113,86 +108,110 @@ impl AsyncWriteObserver for Memory {
     }
 }
 
+struct OutputStreamStorage {
+    stream_counter: usize,
+    streams: HashMap<usize, OutputStream>,
+}
+
+impl OutputStreamStorage {
+    fn new() -> Self {
+        OutputStreamStorage {
+            stream_counter: 0,
+            streams: HashMap::new(),
+        }
+    }
+
+    fn push(&mut self, stream: OutputStream) -> usize {
+        let id = self.stream_counter;
+        self.stream_counter += 1;
+        self.streams.insert(id, stream);
+        id
+    }
+
+    fn remove(&mut self, id: usize) -> Option<OutputStream> {
+        self.streams.remove(&id)
+    }
+
+    fn iter_mut(&mut self) -> impl Iterator<Item = (&usize, &mut OutputStream)> {
+        self.streams.iter_mut()
+    }
+}
+
 async fn write_and_flush(data: &String, stream: &mut OutputStream) -> std::io::Result<()> {
     stream.write_all(data.as_bytes()).await?;
     stream.flush().await
 }
 
-async fn forward_mutable(input: impl AsyncBufRead + Unpin, outputs: Arc<Mutex<Vec<OutputStream>>>) {
-    let mut lines = input.lines();
+async fn forward_mutable<I: AsyncBufRead + Unpin>(
+    mut input: I,
+    outputs: Arc<Mutex<OutputStreamStorage>>,
+) -> (I, Arc<Mutex<OutputStreamStorage>>) {
+    let mut line = String::new();
+    let mut failed_indices = Vec::new();
     loop {
-        let result = lines.next_line().await;
-        if let Err(_) = result {
-            // Treat any error as a pipe close
-            return;
+        line.clear();
+        let result = input.read_line(&mut line).await;
+        match result {
+            Ok(0) => break,
+            Ok(_) => {}
+            Err(_) => break,
         }
-        match result.unwrap() {
-            Some(mut line) => {
-                line.push('\n');
+        let mut outputs = outputs.lock().await;
+        {
+            // Write to all outputs concurrently
+            let mut futures = FuturesOrdered::new();
+            for (i, output) in outputs.iter_mut() {
+                // Process them in reverse order (via push_front), which will make removals easier
+                // after the fact
+                futures.push_front(write_and_flush(&line, output).map(move |result| (i, result)));
+            }
 
-                let mut outputs = outputs.lock().await;
-                let mut failed_indices = Vec::new();
-                {
-                    // Write to all outputs concurrently
-                    let mut futures = FuturesOrdered::new();
-                    for (i, output) in outputs.iter_mut().enumerate() {
-                        // Process them in reverse order (via push_front), which will make removals easier
-                        // after the fact
-                        futures.push_front(
-                            write_and_flush(&line, output).map(move |result| (i, result)),
-                        );
-                    }
-
-                    while let Some(result) = futures.next().await {
-                        if let (i, Err(_)) = result {
-                            failed_indices.push(i);
-                        }
-                    }
-                }
-
-                // Remove any failed streams from the outputs vec so we don't continue to try to write to
-                // them
-                for i in failed_indices.into_iter() {
-                    outputs.swap_remove(i);
+            while let Some(result) = futures.next().await {
+                let (i, result) = result;
+                if result.is_err() {
+                    failed_indices.push(*i);
                 }
             }
-            None => return,
         }
+
+        // Remove any failed streams from the output storage so we don't continue to try to write to
+        // them
+        for i in &failed_indices {
+            outputs.remove(*i);
+        }
+        failed_indices.clear();
     }
+    (input, outputs)
 }
 
-async fn forward_immutable(
-    input: impl AsyncBufRead + Unpin,
+async fn forward_immutable<I: AsyncBufRead + Unpin>(
+    mut input: I,
     mut outputs: Box<[OutputStream]>,
     quit_on_output_failures: bool,
-) {
-    let mut lines = input.lines();
+) -> (I, Box<[OutputStream]>) {
+    let mut line = String::new();
     loop {
-        let result = lines.next_line().await;
-        if let Err(_) = result {
-            // Treat any error as a pipe close
-            return;
+        line.clear();
+        let result = input.read_line(&mut line).await;
+        match result {
+            Ok(0) => break,
+            Ok(_) => {}
+            Err(_) => break,
         }
-        match result.unwrap() {
-            Some(mut line) => {
-                line.push('\n');
-
-                // Write to all outputs concurrently
-                let mut futures = FuturesUnordered::new();
-                for output in outputs.iter_mut() {
-                    futures.push(write_and_flush(&line, output));
-                }
-                while let Some(result) = futures.next().await {
-                    if let Err(_) = result {
-                        if quit_on_output_failures {
-                            return;
-                        }
-                    }
+        // Write to all outputs concurrently
+        let mut futures = FuturesUnordered::new();
+        for output in outputs.iter_mut() {
+            futures.push(write_and_flush(&line, output));
+        }
+        while let Some(result) = futures.next().await {
+            if let Err(_) = result {
+                if quit_on_output_failures {
+                    break;
                 }
             }
-            None => return,
         }
     }
+    (input, outputs)
 }
 
 async fn client(socket: impl AsRef<Path>, passthrough: bool, retry: Option<f64>, quit_early: bool) {
@@ -237,14 +256,17 @@ async fn client(socket: impl AsRef<Path>, passthrough: bool, retry: Option<f64>,
             _ = out_of_socket => {}
         }
     } else {
-        spawn(into_socket);
+        let handle = spawn(into_socket);
         out_of_socket.await;
+        // We purposely don't drop stream_out until we're ready to exit, because that's the signal to the server to
+        // clean up the resources associated with this client
+        drop(handle)
     }
 }
 
 async fn accept_connections(
     socket: impl AsRef<Path>,
-    outputs: Arc<Mutex<Vec<OutputStream>>>,
+    outputs: Arc<Mutex<OutputStreamStorage>>,
     memory: Option<&'static Mutex<Memory>>,
 ) {
     let listener = UnixListener::bind(socket).expect("Unable to create socket");
@@ -263,23 +285,27 @@ async fn accept_connections(
                 }
             }
 
-            {
+            let stream_id = {
                 let mut outputs = outputs.lock().await;
-                outputs.push(Box::new(stream_out));
-            }
+                outputs.push(Box::new(stream_out))
+            };
 
             // We need to spawn here, otherwise we'll never pick up a new client connection
             // until this one ends.
-            //
-            // TODO: After this forward function returns, the client connection is closed. It would be
-            //       great to remove it from the outputs vec at that point, but it's pretty non-trivial.
-            //       For now, we just wait for the next write to outputs for the stale streams to be
-            //       removed.
-            spawn(forward_immutable(
-                BufReader::new(stream_in),
-                Box::new([Box::new(stdout())]),
-                true,
-            ));
+            let outputs_clone = outputs.clone();
+            spawn(async move {
+                forward_immutable(
+                    BufReader::new(stream_in),
+                    Box::new([Box::new(stdout())]),
+                    true,
+                )
+                .await;
+
+                // At this point, the client has closed the connection. Remove it from the output
+                // storage
+                let mut outputs = outputs_clone.lock().await;
+                outputs.remove(stream_id);
+            });
         }
     }
 }
@@ -289,7 +315,7 @@ async fn server(socket: impl AsRef<Path>, passthrough: bool, delete: bool, memor
         let _ = std::fs::remove_file(socket.as_ref());
     }
 
-    let mut outputs: Vec<OutputStream> = Vec::new();
+    let mut outputs = OutputStreamStorage::new();
     if passthrough {
         outputs.push(Box::new(stdout()));
     }

@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 futures = "0.3.31"
+ringbuffer = "0.16.0"
 structopt = "0.3.26"
 tokio = { version = "1.49.0", features = ["io-std", "io-util", "macros", "net", "rt", "sync", "time"] }
 tokio-util = "0.7.18"
